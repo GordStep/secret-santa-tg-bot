@@ -38,6 +38,14 @@ def dispatcher() -> Dispatcher:
 def _bot() -> Bot:
     bot = Bot(token="123456:test-token")
     bot.session = AsyncMock()
+    bot.get_me = AsyncMock(
+        return_value=User(
+            id=123456,
+            is_bot=True,
+            first_name="Secret Santa",
+            username="secret_santa_test_bot",
+        )
+    )
     return bot
 
 
@@ -117,6 +125,8 @@ async def test_handler_game_flow_without_network(
     assert len(games) == 1
     game = games[0]
     assert any("Party &lt;b&gt;" in method.text for method in _send_messages(bot))
+    invite_link = f"https://t.me/secret_santa_test_bot?start={game.code}"
+    assert any(invite_link in method.text for method in _send_messages(bot))
 
     await _feed(dispatcher, bot, db, _callback(first, 3, "join_game"))
     await _feed(dispatcher, bot, db, _update(first, 4, game.code.lower()))
@@ -182,6 +192,36 @@ async def test_handler_game_flow_without_network(
     )
     assert any(
         method.text == texts.GAME_ARCHIVED for method in _callback_answers(bot)
+    )
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_invite_link_joins_user_automatically(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(900)
+    participant = _user(101)
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
+    await _feed(dispatcher, bot, db, _update(organizer, 2, "Deep link"))
+    game = (await list_user_games(db, organizer.id))[0]
+
+    await _feed(dispatcher, bot, db, _update(participant, 3, f"/start {game.code}"))
+
+    details = await get_game_details(db, game.id, participant.id)
+    assert details.participant is not None
+    assert details.participant.wishes is None
+    assert any(
+        method.chat_id == participant.id and method.text == texts.joined_game(game.name)
+        for method in _send_messages(bot)
+    )
+    assert any(
+        method.chat_id == organizer.id
+        and method.text == texts.organizer_participant_joined(game.name, participant.id)
+        for method in _send_messages(bot)
     )
     await bot.session.close()
 

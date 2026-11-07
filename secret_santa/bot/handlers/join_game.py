@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import logging
-
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, User
 
@@ -11,12 +8,12 @@ from secret_santa.bot import texts
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.handlers.errors import notify_game_error
 from secret_santa.bot.keyboards import cancel_keyboard, open_game_keyboard, wishes_keyboard
+from secret_santa.bot.notifications import notify_organizer_participant_joined
 from secret_santa.bot.services.errors import GameError
 from secret_santa.bot.services.games import join_game, validate_join
 from secret_santa.bot.states import JoinGameState
 
 router = Router(name="join_game")
-logger = logging.getLogger(__name__)
 
 
 async def _begin_join_game(message: Message, state: FSMContext) -> None:
@@ -62,21 +59,6 @@ async def process_join_code(
     await message.answer(texts.ASK_WISHES, reply_markup=wishes_keyboard())
 
 
-async def _notify_organizer(
-    bot: Bot,
-    organizer_id: int,
-    game_name: str,
-    user_id: int,
-) -> None:
-    try:
-        await bot.send_message(
-            organizer_id,
-            texts.organizer_participant_joined(game_name, user_id),
-        )
-    except TelegramAPIError:
-        logger.warning("Could not notify game organizer about a new participant")
-
-
 async def _finish_join(
     message: Message,
     user: User,
@@ -114,7 +96,7 @@ async def _finish_join(
         texts.joined_game(game_name),
         reply_markup=open_game_keyboard(game_id),
     )
-    await _notify_organizer(bot, organizer_id, game_name, user.id)
+    await notify_organizer_participant_joined(bot, organizer_id, game_name, user.id)
 
 
 @router.message(JoinGameState.waiting_for_wishes)

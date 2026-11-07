@@ -6,7 +6,8 @@ join games as a participant, including their own games.
 
 ## Features
 
-- Game creation with unique eight-character invitation codes.
+- Game creation with unique eight-character invitation codes and Telegram invite links.
+- Automatic joining through `/start <code>` deep links.
 - Optional gift wishes and one participation per user per game.
 - Atomic draw using a derangement, so nobody gifts to themselves.
 - Private target delivery and repeatable target viewing without re-rolling.

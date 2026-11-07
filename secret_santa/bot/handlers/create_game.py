@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -38,12 +38,16 @@ async def create_game_with_name(
     message: Message,
     state: FSMContext,
     db: Database,
+    bot: Bot,
 ) -> None:
     if message.from_user is None:
         raise RuntimeError("Message sender is missing")
     if message.text is None:
         await message.answer(texts.TEXT_REQUIRED)
         return
+    bot_user = await bot.get_me()
+    if bot_user.username is None:
+        raise RuntimeError("Bot username is missing")
     try:
         game = await create_game(db, message.from_user.id, message.text)
     except GameError as error:
@@ -51,6 +55,6 @@ async def create_game_with_name(
         return
     await state.clear()
     await message.answer(
-        texts.game_created(game),
+        texts.game_created(game, bot_user.username),
         reply_markup=game_keyboard(game, True, None),
     )

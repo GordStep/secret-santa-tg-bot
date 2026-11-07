@@ -94,12 +94,14 @@ def game_list_button(game: Game, user_id: int) -> str:
     return f"{game.name} · {role} · {status_text(game.status)}"
 
 
-def game_created(game: Game) -> str:
+def game_created(game: Game, bot_username: str) -> str:
     name = html.escape(game.name)
     code = html.escape(game.code)
+    invite_link = html.escape(f"https://t.me/{bot_username}?start={game.code}")
     return (
         f"Игра <b>{name}</b> создана!\n"
-        f"Код для участников: <code>{code}</code>\n\n"
+        f"Код для участников: <code>{code}</code>\n"
+        f"Пригласительная ссылка: {invite_link}\n\n"
         "Откройте игру, чтобы посмотреть участников или провести жеребьёвку."
     )
 

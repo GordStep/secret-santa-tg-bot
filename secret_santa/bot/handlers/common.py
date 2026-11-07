@@ -1,16 +1,28 @@
 from __future__ import annotations
 
-from aiogram import F, Router
-from aiogram.filters import Command, CommandStart
+from aiogram import Bot, F, Router
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from secret_santa.bot import texts
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.handlers.errors import notify_game_error
-from secret_santa.bot.keyboards import game_keyboard, games_keyboard, main_menu_keyboard
+from secret_santa.bot.keyboards import (
+    game_keyboard,
+    games_keyboard,
+    main_menu_keyboard,
+    open_game_keyboard,
+)
+from secret_santa.bot.notifications import notify_organizer_participant_joined
 from secret_santa.bot.services.errors import GameError
-from secret_santa.bot.services.games import GameDetails, get_game_details, list_user_games
+from secret_santa.bot.services.games import (
+    GameDetails,
+    get_game_details,
+    join_game,
+    list_user_games,
+    validate_join,
+)
 
 router = Router(name="common")
 
@@ -51,10 +63,41 @@ async def _send_game_details(message: Message, details: GameDetails) -> None:
     )
 
 
+async def _join_by_invite(
+    message: Message,
+    db: Database,
+    bot: Bot,
+    code: str,
+) -> None:
+    if message.from_user is None:
+        raise RuntimeError("Message sender is missing")
+    user = message.from_user
+    try:
+        game = await validate_join(db, code, user.id)
+        await join_game(db, game.id, user.id, user.username, user.first_name, None)
+    except GameError as error:
+        await notify_game_error(message, error)
+        return
+    await message.answer(
+        texts.joined_game(game.name),
+        reply_markup=open_game_keyboard(game.id),
+    )
+    await notify_organizer_participant_joined(bot, game.organizer_id, game.name, user.id)
+
+
 @router.message(CommandStart())
-async def start_command(message: Message, state: FSMContext) -> None:
+async def start_command(
+    message: Message,
+    state: FSMContext,
+    db: Database,
+    bot: Bot,
+    command: CommandObject,
+) -> None:
     await state.clear()
-    await _send_main_menu(message)
+    if not command.args:
+        await _send_main_menu(message)
+        return
+    await _join_by_invite(message, db, bot, command.args)
 
 
 @router.message(Command("cancel"))
