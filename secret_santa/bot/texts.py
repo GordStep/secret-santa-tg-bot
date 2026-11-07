@@ -25,6 +25,8 @@ REFRESH_BUTTON = "Обновить список"
 START_DRAW_BUTTON = "Провести жеребьёвку"
 ARCHIVE_BUTTON = "Архивировать игру"
 CONFIRM_ARCHIVE_BUTTON = "Подтвердить архивирование"
+DELETE_GAME_BUTTON = "Удалить игру"
+CONFIRM_DELETE_GAME_BUTTON = "Подтвердить удаление"
 MY_TARGET_BUTTON = "Мой получатель"
 GIFT_READY_BUTTON = "Подарок готов"
 BACK_TO_GAMES_BUTTON = "К списку игр"
@@ -47,6 +49,7 @@ CODE_NOT_FOUND = "Игра с таким кодом не найдена. Про�
 GAME_NOT_FOUND = "Игра не найдена."
 JOIN_ALREADY_STARTED = "Нельзя присоединиться: жеребьёвка уже проведена."
 GAME_ARCHIVED = "Игра архивирована. Это действие недоступно."
+GAME_NOT_ARCHIVED = "Удалить можно только заархивированную игру."
 ALREADY_JOINED = "Вы уже участвуете в этой игре."
 NEED_MORE_PLAYERS = "Для жеребьёвки нужны хотя бы два участника."
 ALREADY_STARTED = "Жеребьёвка уже проведена, повторный запуск невозможен."
@@ -69,6 +72,8 @@ ARCHIVE_CONFIRMATION = (
     "или повторно провести жеребьёвку. Продолжить?"
 )
 ARCHIVED_SUCCESS = "Игра архивирована."
+DELETE_CONFIRMATION = "Удалить заархивированную игру? Это действие нельзя отменить."
+DELETED_SUCCESS = "Игра удалена."
 GIFT_READY_SUCCESS = "Отлично! Подарок отмечен как готовый."
 GIFT_ALREADY_READY = "Подарок уже отмечен как готовый."
 TARGET_SENT = "Получатель отправлен в личное сообщение."
@@ -119,7 +124,7 @@ def organizer_participant_joined(
     first_name: str,
 ) -> str:
     name = display_name(username, first_name)
-    return f"К игре: {html.escape(game_name)} присоединился {html.escape(name)}"
+    return f"К игре: <b>{html.escape(game_name)}</b> присоединился {html.escape(name)}"
 
 
 def organizer_list(game: Game, participants: Sequence[Participant]) -> str:

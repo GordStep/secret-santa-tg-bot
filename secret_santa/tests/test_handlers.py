@@ -138,11 +138,11 @@ async def test_handler_game_flow_without_network(
         method for method in _send_messages(bot) if method.chat_id == organizer.id
     ]
     assert any(
-        method.text == "К игре: Party &lt;b&gt; присоединился @user101"
+        method.text == "К игре: <b>Party &lt;b&gt;</b> присоединился @user101"
         for method in organizer_messages
     )
     assert any(
-        method.text == "К игре: Party &lt;b&gt; присоединился @user102"
+        method.text == "К игре: <b>Party &lt;b&gt;</b> присоединился @user102"
         for method in organizer_messages
     )
 
@@ -193,6 +193,49 @@ async def test_handler_game_flow_without_network(
     assert any(
         method.text == texts.GAME_ARCHIVED for method in _callback_answers(bot)
     )
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_archived_game_deletion_flow(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(900)
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
+    await _feed(dispatcher, bot, db, _update(organizer, 2, "Finished"))
+    game = (await list_user_games(db, organizer.id))[0]
+    await _feed(dispatcher, bot, db, _callback(organizer, 3, f"organizer:archive:{game.id}"))
+    await _feed(
+        dispatcher,
+        bot,
+        db,
+        _callback(organizer, 4, f"organizer:archive_confirm:{game.id}"),
+    )
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 5, f"game:{game.id}"))
+    game_markup = _send_messages(bot)[-1].reply_markup
+    assert game_markup is not None
+    assert any(
+        button.text == texts.DELETE_GAME_BUTTON
+        and button.callback_data == f"organizer:delete:{game.id}"
+        for row in game_markup.inline_keyboard
+        for button in row
+    )
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 6, f"organizer:delete:{game.id}"))
+    assert _send_messages(bot)[-1].text == texts.DELETE_CONFIRMATION
+    await _feed(
+        dispatcher,
+        bot,
+        db,
+        _callback(organizer, 7, f"organizer:delete_confirm:{game.id}"),
+    )
+
+    assert await list_user_games(db, organizer.id) == ()
+    assert _send_messages(bot)[-1].text == texts.DELETED_SUCCESS
     await bot.session.close()
 
 

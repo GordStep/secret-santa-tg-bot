@@ -71,6 +71,11 @@ def game_keyboard(
                 text=texts.ARCHIVE_BUTTON,
                 callback_data=f"organizer:archive:{game.id}",
             )
+        else:
+            builder.button(
+                text=texts.DELETE_GAME_BUTTON,
+                callback_data=f"organizer:delete:{game.id}",
+            )
     if participant is not None:
         builder.button(
             text=texts.MY_TARGET_BUTTON,
@@ -92,6 +97,17 @@ def archive_confirmation_keyboard(game_id: int) -> InlineKeyboardMarkup:
     builder.button(
         text=texts.CONFIRM_ARCHIVE_BUTTON,
         callback_data=f"organizer:archive_confirm:{game_id}",
+    )
+    builder.button(text=texts.CANCEL_BUTTON, callback_data=f"game:{game_id}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def delete_confirmation_keyboard(game_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=texts.CONFIRM_DELETE_GAME_BUTTON,
+        callback_data=f"organizer:delete_confirm:{game_id}",
     )
     builder.button(text=texts.CANCEL_BUTTON, callback_data=f"game:{game_id}")
     builder.adjust(1)

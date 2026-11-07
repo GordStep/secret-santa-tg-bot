@@ -9,9 +9,14 @@ from aiogram.types import CallbackQuery, Message
 from secret_santa.bot import texts
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.handlers.errors import notify_game_error
-from secret_santa.bot.keyboards import archive_confirmation_keyboard, open_game_keyboard
+from secret_santa.bot.keyboards import (
+    archive_confirmation_keyboard,
+    delete_confirmation_keyboard,
+    main_menu_keyboard,
+    open_game_keyboard,
+)
 from secret_santa.bot.services.errors import GameError
-from secret_santa.bot.services.games import archive_game, start_game
+from secret_santa.bot.services.games import archive_game, delete_archived_game, start_game
 
 router = Router(name="organizer")
 logger = logging.getLogger(__name__)
@@ -87,5 +92,37 @@ async def confirm_archive(
     await callback.message.answer(
         texts.ARCHIVED_SUCCESS,
         reply_markup=open_game_keyboard(game_id),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.regexp(r"^organizer:delete:\d+$"))
+async def request_deletion(callback: CallbackQuery) -> None:
+    game_id = _game_id(callback.data)
+    if not isinstance(callback.message, Message):
+        raise RuntimeError("Callback message is unavailable")
+    await callback.message.answer(
+        texts.DELETE_CONFIRMATION,
+        reply_markup=delete_confirmation_keyboard(game_id),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.regexp(r"^organizer:delete_confirm:\d+$"))
+async def confirm_deletion(
+    callback: CallbackQuery,
+    db: Database,
+) -> None:
+    game_id = _game_id(callback.data)
+    if not isinstance(callback.message, Message):
+        raise RuntimeError("Callback message is unavailable")
+    try:
+        await delete_archived_game(db, game_id, callback.from_user.id)
+    except GameError as error:
+        await notify_game_error(callback, error)
+        return
+    await callback.message.answer(
+        texts.DELETED_SUCCESS,
+        reply_markup=main_menu_keyboard(),
     )
     await callback.answer()

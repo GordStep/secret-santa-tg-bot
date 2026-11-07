@@ -13,6 +13,7 @@ join games as a participant, including their own games.
 - Private target delivery and repeatable target viewing without re-rolling.
 - Organizer participant list with gift-readiness status.
 - One-way game lifecycle: collecting, started, archived.
+- Organizer-only deletion of archived games with confirmation.
 
 ## Setup
 

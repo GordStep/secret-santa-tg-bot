@@ -14,6 +14,7 @@ from secret_santa.bot.services.errors import (
     GameAlreadyStartedError,
     GameArchivedError,
     GameError,
+    GameNotArchivedError,
     GameNotCollectingError,
     GameNotFoundError,
     GameNotStartedError,
@@ -45,6 +46,8 @@ def game_error_text(error: GameError) -> str:
         return texts.ALREADY_STARTED
     if isinstance(error, GameArchivedError):
         return texts.GAME_ARCHIVED
+    if isinstance(error, GameNotArchivedError):
+        return texts.GAME_NOT_ARCHIVED
     if isinstance(error, GameNotStartedError):
         return texts.GAME_NOT_STARTED
     if isinstance(error, InvalidGameNameError):

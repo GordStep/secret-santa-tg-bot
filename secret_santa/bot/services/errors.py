@@ -43,6 +43,10 @@ class GameArchivedError(GameError):
     pass
 
 
+class GameNotArchivedError(GameError):
+    pass
+
+
 class GameNotStartedError(GameError):
     pass
 

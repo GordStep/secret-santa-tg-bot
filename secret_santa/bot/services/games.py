@@ -16,6 +16,7 @@ from secret_santa.bot.services.errors import (
     GameAccessDeniedError,
     GameAlreadyStartedError,
     GameArchivedError,
+    GameNotArchivedError,
     GameNotCollectingError,
     GameNotFoundError,
     GameNotStartedError,
@@ -251,6 +252,22 @@ async def archive_game(
         await db.rollback()
         raise
     return replace(game, status=GameStatus.ARCHIVED)
+
+
+@_synchronized
+async def delete_archived_game(db: Database, game_id: int, organizer_id: int) -> None:
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        game = await _get_game(db, game_id)
+        if game.organizer_id != organizer_id:
+            raise NotOrganizerError
+        if game.status != GameStatus.ARCHIVED:
+            raise GameNotArchivedError
+        await repo.delete_game(db, game_id)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
 
 
 @_synchronized

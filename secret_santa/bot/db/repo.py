@@ -145,6 +145,11 @@ async def set_game_status(
     await cursor.close()
 
 
+async def delete_game(db: Database, game_id: int) -> None:
+    cursor = await db.execute("DELETE FROM games WHERE id = ?", (game_id,))
+    await cursor.close()
+
+
 async def set_targets(
     db: Database,
     game_id: int,

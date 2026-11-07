@@ -10,7 +10,9 @@ from secret_santa.bot.services.errors import (
     AlreadyJoinedError,
     GameAlreadyStartedError,
     GameArchivedError,
+    GameNotArchivedError,
     GameNotCollectingError,
+    GameNotFoundError,
     GameNotStartedError,
     InvalidCodeError,
     NotEnoughParticipantsError,
@@ -19,6 +21,7 @@ from secret_santa.bot.services.errors import (
 from secret_santa.bot.services.games import (
     archive_game,
     create_game,
+    delete_archived_game,
     get_game_details,
     get_participant_target,
     join_game,
@@ -149,3 +152,23 @@ async def test_concurrent_game_creation_is_serialized(db: Database) -> None:
     assert len(games) == 10
     assert len({game.id for game in games}) == 10
     assert len({game.code for game in games}) == 10
+
+
+@pytest.mark.asyncio
+async def test_organizer_can_delete_only_archived_game(db: Database) -> None:
+    game = await create_game(db, 900, "Finished")
+    await _join(db, game.id, 101)
+
+    with pytest.raises(GameNotArchivedError):
+        await delete_archived_game(db, game.id, 900)
+
+    await archive_game(db, game.id, 900)
+    with pytest.raises(NotOrganizerError):
+        await delete_archived_game(db, game.id, 901)
+
+    await delete_archived_game(db, game.id, 900)
+
+    assert await list_user_games(db, 900) == ()
+    assert await list_user_games(db, 101) == ()
+    with pytest.raises(GameNotFoundError):
+        await get_game_details(db, game.id, 900)
