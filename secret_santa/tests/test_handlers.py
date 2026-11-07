@@ -124,6 +124,17 @@ async def test_handler_game_flow_without_network(
     await _feed(dispatcher, bot, db, _callback(second, 6, "join_game"))
     await _feed(dispatcher, bot, db, _update(second, 7, game.code))
     await _feed(dispatcher, bot, db, _callback(second, 8, "join:skip_wishes"))
+    organizer_messages = [
+        method for method in _send_messages(bot) if method.chat_id == organizer.id
+    ]
+    assert any(
+        method.text == "К игре: Party &lt;b&gt; присоединился 101"
+        for method in organizer_messages
+    )
+    assert any(
+        method.text == "К игре: Party &lt;b&gt; присоединился 102"
+        for method in organizer_messages
+    )
 
     await _feed(
         dispatcher,
@@ -188,4 +199,40 @@ async def test_cancel_command_interrupts_fsm(
 
     assert await list_user_games(db, 900) == ()
     assert any(method.text == texts.CANCELLED for method in _send_messages(bot))
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_reply_main_menu_buttons(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    user = _user(900)
+
+    await _feed(dispatcher, bot, db, _update(user, 1, "/start"))
+    menu_message = _send_messages(bot)[-1]
+    assert menu_message.text == texts.START_MESSAGE
+    assert menu_message.reply_markup is not None
+    assert menu_message.reply_markup.resize_keyboard is True
+    assert [
+        [button.text for button in row]
+        for row in menu_message.reply_markup.keyboard
+    ] == [
+        [texts.CREATE_GAME_BUTTON, texts.JOIN_GAME_BUTTON],
+        [texts.MY_GAMES_BUTTON, texts.ABOUT_BOT_BUTTON],
+    ]
+
+    await _feed(dispatcher, bot, db, _update(user, 2, texts.ABOUT_BOT_BUTTON))
+    assert _send_messages(bot)[-1].text == texts.ABOUT_BOT
+
+    await _feed(dispatcher, bot, db, _update(user, 3, texts.MY_GAMES_BUTTON))
+    assert _send_messages(bot)[-1].text == texts.NO_GAMES
+
+    await _feed(dispatcher, bot, db, _update(user, 4, texts.CREATE_GAME_BUTTON))
+    assert _send_messages(bot)[-1].text == texts.ASK_GAME_NAME
+
+    await _feed(dispatcher, bot, db, _update(user, 5, texts.ABOUT_BOT_BUTTON))
+    await _feed(dispatcher, bot, db, _update(user, 6, texts.JOIN_GAME_BUTTON))
+    assert _send_messages(bot)[-1].text == texts.ASK_CODE
     await bot.session.close()

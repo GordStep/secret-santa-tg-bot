@@ -9,9 +9,14 @@ START_MESSAGE = (
     "Привет! Это бот для игры «Тайный Санта».\n"
     "Создайте игру или присоединитесь к существующей по коду."
 )
+ABOUT_BOT = (
+    "Бот разработан для проведения игры «Тайный Санта» в DRE Lab.\n"
+    "Код представлен на GitHub: [ссылка — заглушка]."
+)
 CREATE_GAME_BUTTON = "Создать игру"
 JOIN_GAME_BUTTON = "Присоединиться к игре"
 MY_GAMES_BUTTON = "Мои игры"
+ABOUT_BOT_BUTTON = "О боте"
 MAIN_MENU_BUTTON = "Главное меню"
 CANCEL_BUTTON = "Отмена"
 SKIP_WISHES_BUTTON = "Пропустить пожелания"
@@ -104,6 +109,10 @@ def joined_game(game_name: str) -> str:
         f"Вы присоединились к игре <b>{html.escape(game_name)}</b>!\n"
         "Получатель появится после жеребьёвки."
     )
+
+
+def organizer_participant_joined(game_name: str, user_id: int) -> str:
+    return f"К игре: {html.escape(game_name)} присоединился {user_id}"
 
 
 def organizer_list(game: Game, participants: Sequence[Participant]) -> str:

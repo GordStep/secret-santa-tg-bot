@@ -15,13 +15,22 @@ from secret_santa.bot.states import CreateGameState
 router = Router(name="create_game")
 
 
+async def _begin_create_game(message: Message, state: FSMContext) -> None:
+    await state.set_state(CreateGameState.waiting_for_name)
+    await message.answer(texts.ASK_GAME_NAME, reply_markup=cancel_keyboard())
+
+
 @router.callback_query(F.data == "create_game")
 async def begin_create_game(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(CreateGameState.waiting_for_name)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
-    await callback.message.answer(texts.ASK_GAME_NAME, reply_markup=cancel_keyboard())
+    await _begin_create_game(callback.message, state)
     await callback.answer()
+
+
+@router.message(F.text == texts.CREATE_GAME_BUTTON)
+async def create_game_button(message: Message, state: FSMContext) -> None:
+    await _begin_create_game(message, state)
 
 
 @router.message(CreateGameState.waiting_for_name)

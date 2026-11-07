@@ -2,20 +2,21 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from aiogram.types import InlineKeyboardMarkup
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 from secret_santa.bot import texts
 from secret_santa.bot.db.models import Game, GameStatus, Participant
 
 
-def main_menu_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text=texts.CREATE_GAME_BUTTON, callback_data="create_game")
-    builder.button(text=texts.JOIN_GAME_BUTTON, callback_data="join_game")
-    builder.button(text=texts.MY_GAMES_BUTTON, callback_data="my_games")
-    builder.adjust(1)
-    return builder.as_markup()
+def main_menu_keyboard() -> ReplyKeyboardMarkup:
+    builder = ReplyKeyboardBuilder()
+    builder.button(text=texts.CREATE_GAME_BUTTON)
+    builder.button(text=texts.JOIN_GAME_BUTTON)
+    builder.button(text=texts.MY_GAMES_BUTTON)
+    builder.button(text=texts.ABOUT_BOT_BUTTON)
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
 
 
 def cancel_keyboard() -> InlineKeyboardMarkup:

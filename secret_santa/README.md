@@ -41,10 +41,10 @@ See `secret_santa/.env.example` for the variable names.
 python -m secret_santa.bot.main
 ```
 
-Open a private chat with the bot and use `/start`. The inline menu supports game
-creation, joining, game management, target viewing, and gift-readiness updates.
-`/my_games` lists all games organized or joined by the current user; `/cancel`
-cancels the current dialog.
+Open a private chat with the bot and use `/start`. The reply keyboard supports game
+creation, joining, listing games, and viewing bot information. Inline keyboards provide
+game management, target viewing, and gift-readiness updates. `/my_games` lists all games
+organized or joined by the current user; `/cancel` cancels the current dialog.
 
 ## Tests
 

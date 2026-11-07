@@ -70,6 +70,20 @@ async def my_games_command(message: Message, db: Database) -> None:
     await _send_my_games(message, db, message.from_user.id)
 
 
+@router.message(F.text == texts.MY_GAMES_BUTTON)
+async def my_games_button(message: Message, state: FSMContext, db: Database) -> None:
+    if message.from_user is None:
+        raise RuntimeError("Message sender is missing")
+    await state.clear()
+    await _send_my_games(message, db, message.from_user.id)
+
+
+@router.message(F.text == texts.ABOUT_BOT_BUTTON)
+async def about_bot_button(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(texts.ABOUT_BOT)
+
+
 @router.callback_query(F.data == "main_menu")
 async def main_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
