@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+from aiogram import F, Router
+from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
+
+from secret_santa.bot import texts
+from secret_santa.bot.db.database import Database
+from secret_santa.bot.handlers.errors import notify_game_error
+from secret_santa.bot.keyboards import game_keyboard, games_keyboard, main_menu_keyboard
+from secret_santa.bot.services.errors import GameError
+from secret_santa.bot.services.games import GameDetails, get_game_details, list_user_games
+
+router = Router(name="common")
+
+
+async def _send_main_menu(message: Message) -> None:
+    await message.answer(texts.START_MESSAGE, reply_markup=main_menu_keyboard())
+
+
+async def _send_my_games(
+    message: Message,
+    db: Database,
+    user_id: int,
+) -> None:
+    games = await list_user_games(db, user_id)
+    if not games:
+        await message.answer(texts.NO_GAMES, reply_markup=main_menu_keyboard())
+        return
+    await message.answer(
+        texts.MY_GAMES_HEADER,
+        reply_markup=games_keyboard(games, user_id),
+    )
+
+
+async def _send_game_details(message: Message, details: GameDetails) -> None:
+    if details.is_organizer:
+        text = texts.organizer_list(details.game, details.participants)
+    elif details.participant is not None:
+        text = texts.participant_game(details.game, details.participant)
+    else:
+        raise RuntimeError("Participant details are missing")
+    await message.answer(
+        text,
+        reply_markup=game_keyboard(
+            details.game,
+            details.is_organizer,
+            details.participant,
+        ),
+    )
+
+
+@router.message(CommandStart())
+async def start_command(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await _send_main_menu(message)
+
+
+@router.message(Command("cancel"))
+async def cancel_command(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(texts.CANCELLED, reply_markup=main_menu_keyboard())
+
+
+@router.message(Command("my_games"))
+async def my_games_command(message: Message, db: Database) -> None:
+    if message.from_user is None:
+        raise RuntimeError("Message sender is missing")
+    await _send_my_games(message, db, message.from_user.id)
+
+
+@router.callback_query(F.data == "main_menu")
+async def main_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    if not isinstance(callback.message, Message):
+        raise RuntimeError("Callback message is unavailable")
+    await _send_main_menu(callback.message)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "my_games")
+async def my_games_callback(callback: CallbackQuery, db: Database) -> None:
+    if not isinstance(callback.message, Message):
+        raise RuntimeError("Callback message is unavailable")
+    await _send_my_games(callback.message, db, callback.from_user.id)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "cancel_dialog")
+async def cancel_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    if not isinstance(callback.message, Message):
+        raise RuntimeError("Callback message is unavailable")
+    await callback.message.answer(texts.CANCELLED, reply_markup=main_menu_keyboard())
+    await callback.answer()
+
+
+@router.callback_query(F.data.regexp(r"^game:\d+$"))
+async def game_details_callback(
+    callback: CallbackQuery,
+    db: Database,
+) -> None:
+    if callback.data is None or not isinstance(callback.message, Message):
+        raise RuntimeError("Callback data is unavailable")
+    game_id = int(callback.data.rsplit(":", maxsplit=1)[1])
+    try:
+        details = await get_game_details(db, game_id, callback.from_user.id)
+    except GameError as error:
+        await notify_game_error(callback, error)
+        return
+    await _send_game_details(callback.message, details)
+    await callback.answer()
