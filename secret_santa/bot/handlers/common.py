@@ -15,7 +15,12 @@ from secret_santa.bot.keyboards import (
     wishes_keyboard,
 )
 from secret_santa.bot.services.errors import GameError
-from secret_santa.bot.services.games import GameDetails, get_game_details, list_user_games, validate_join
+from secret_santa.bot.services.games import (
+    GameDetails,
+    get_game_details,
+    list_user_games,
+    validate_join,
+)
 from secret_santa.bot.states import JoinGameState
 
 router = Router(name="common")
@@ -59,30 +64,24 @@ async def _send_game_details(message: Message, details: GameDetails) -> None:
 
 async def _join_by_invite(
     message: Message,
+    state: FSMContext,
     db: Database,
-    bot: Bot,
     code: str,
 ) -> None:
     if message.from_user is None:
         raise RuntimeError("Message sender is missing")
-    user = message.from_user
     try:
-        game = await validate_join(db, code, user.id)
-        await join_game(db, game.id, user.id, user.username, user.first_name, None)
+        game = await validate_join(db, code, message.from_user.id)
     except GameError as error:
         await notify_game_error(message, error)
         return
-    await message.answer(
-        texts.joined_game(game.name),
-        reply_markup=open_game_keyboard(game.id),
+    await state.update_data(
+        game_id=game.id,
+        game_name=game.name,
+        organizer_id=game.organizer_id,
     )
-    await notify_organizer_participant_joined(
-        bot,
-        game.organizer_id,
-        game.name,
-        user.username,
-        user.first_name,
-    )
+    await state.set_state(JoinGameState.waiting_for_wishes)
+    await message.answer(texts.ASK_WISHES, reply_markup=wishes_keyboard())
 
 
 @router.message(CommandStart())
@@ -90,14 +89,13 @@ async def start_command(
     message: Message,
     state: FSMContext,
     db: Database,
-    bot: Bot,
     command: CommandObject,
 ) -> None:
     await state.clear()
     if not command.args:
         await _send_main_menu(message)
         return
-    await _join_by_invite(message, db, bot, command.args)
+    await _join_by_invite(message, state, db, command.args)
 
 
 @router.message(Command("cancel"))

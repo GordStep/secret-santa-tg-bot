@@ -197,7 +197,7 @@ async def test_handler_game_flow_without_network(
 
 
 @pytest.mark.asyncio
-async def test_invite_link_joins_user_automatically(
+async def test_invite_link_asks_for_wishes_and_joins_user(
     db: Database,
     dispatcher: Dispatcher,
 ) -> None:
@@ -211,9 +211,13 @@ async def test_invite_link_joins_user_automatically(
 
     await _feed(dispatcher, bot, db, _update(participant, 3, f"/start {game.code}"))
 
+    assert _send_messages(bot)[-1].text == texts.ASK_WISHES
+    assert await list_user_games(db, participant.id) == ()
+
+    await _feed(dispatcher, bot, db, _update(participant, 4, "Books"))
     details = await get_game_details(db, game.id, participant.id)
     assert details.participant is not None
-    assert details.participant.wishes is None
+    assert details.participant.wishes == "Books"
     assert any(
         method.chat_id == participant.id and method.text == texts.joined_game(game.name)
         for method in _send_messages(bot)
