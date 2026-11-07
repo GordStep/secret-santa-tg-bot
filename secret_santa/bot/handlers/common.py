@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from aiogram import Bot, F, Router
+from aiogram import F, Router
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -12,17 +12,11 @@ from secret_santa.bot.keyboards import (
     game_keyboard,
     games_keyboard,
     main_menu_keyboard,
-    open_game_keyboard,
+    wishes_keyboard,
 )
-from secret_santa.bot.notifications import notify_organizer_participant_joined
 from secret_santa.bot.services.errors import GameError
-from secret_santa.bot.services.games import (
-    GameDetails,
-    get_game_details,
-    join_game,
-    list_user_games,
-    validate_join,
-)
+from secret_santa.bot.services.games import GameDetails, get_game_details, list_user_games, validate_join
+from secret_santa.bot.states import JoinGameState
 
 router = Router(name="common")
 
@@ -82,7 +76,13 @@ async def _join_by_invite(
         texts.joined_game(game.name),
         reply_markup=open_game_keyboard(game.id),
     )
-    await notify_organizer_participant_joined(bot, game.organizer_id, game.name, user.id)
+    await notify_organizer_participant_joined(
+        bot,
+        game.organizer_id,
+        game.name,
+        user.username,
+        user.first_name,
+    )
 
 
 @router.message(CommandStart())

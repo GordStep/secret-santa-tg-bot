@@ -113,8 +113,13 @@ def joined_game(game_name: str) -> str:
     )
 
 
-def organizer_participant_joined(game_name: str, user_id: int) -> str:
-    return f"К игре: {html.escape(game_name)} присоединился {user_id}"
+def organizer_participant_joined(
+    game_name: str,
+    username: str | None,
+    first_name: str,
+) -> str:
+    name = display_name(username, first_name)
+    return f"К игре: {html.escape(game_name)} присоединился {html.escape(name)}"
 
 
 def organizer_list(game: Game, participants: Sequence[Participant]) -> str:

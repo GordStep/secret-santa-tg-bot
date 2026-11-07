@@ -96,7 +96,13 @@ async def _finish_join(
         texts.joined_game(game_name),
         reply_markup=open_game_keyboard(game_id),
     )
-    await notify_organizer_participant_joined(bot, organizer_id, game_name, user.id)
+    await notify_organizer_participant_joined(
+        bot,
+        organizer_id,
+        game_name,
+        user.username,
+        user.first_name,
+    )
 
 
 @router.message(JoinGameState.waiting_for_wishes)

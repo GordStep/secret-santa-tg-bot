@@ -138,11 +138,11 @@ async def test_handler_game_flow_without_network(
         method for method in _send_messages(bot) if method.chat_id == organizer.id
     ]
     assert any(
-        method.text == "К игре: Party &lt;b&gt; присоединился 101"
+        method.text == "К игре: Party &lt;b&gt; присоединился @user101"
         for method in organizer_messages
     )
     assert any(
-        method.text == "К игре: Party &lt;b&gt; присоединился 102"
+        method.text == "К игре: Party &lt;b&gt; присоединился @user102"
         for method in organizer_messages
     )
 
@@ -218,9 +218,13 @@ async def test_invite_link_joins_user_automatically(
         method.chat_id == participant.id and method.text == texts.joined_game(game.name)
         for method in _send_messages(bot)
     )
+    expected_notification = texts.organizer_participant_joined(
+        game.name,
+        participant.username,
+        participant.first_name,
+    )
     assert any(
-        method.chat_id == organizer.id
-        and method.text == texts.organizer_participant_joined(game.name, participant.id)
+        method.chat_id == organizer.id and method.text == expected_notification
         for method in _send_messages(bot)
     )
     await bot.session.close()
