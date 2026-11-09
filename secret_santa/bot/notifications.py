@@ -16,11 +16,12 @@ async def notify_organizer_participant_joined(
     game_name: str,
     username: str | None,
     first_name: str,
+    language: str,
 ) -> None:
     try:
         await bot.send_message(
             organizer_id,
-            texts.organizer_participant_joined(game_name, username, first_name),
+            texts.organizer_participant_joined(language, game_name, username, first_name),
         )
     except TelegramAPIError:
         logger.warning("Could not notify game organizer about a new participant")

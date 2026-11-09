@@ -203,6 +203,34 @@ async def get_target(
     return Target(row["user_id"], row["username"], row["first_name"], row["wishes"])
 
 
+async def get_user_language(db: Database, user_id: int) -> str | None:
+    async with db.execute(
+        "SELECT language_code FROM users WHERE user_id = ?",
+        (user_id,),
+    ) as cursor:
+        row = await cursor.fetchone()
+    return row["language_code"] if row is not None else None
+
+
+async def ensure_user_language(db: Database, user_id: int, language_code: str) -> None:
+    cursor = await db.execute(
+        "INSERT OR IGNORE INTO users (user_id, language_code) VALUES (?, ?)",
+        (user_id, language_code),
+    )
+    await cursor.close()
+
+
+async def set_user_language(db: Database, user_id: int, language_code: str) -> None:
+    cursor = await db.execute(
+        """
+        INSERT INTO users (user_id, language_code) VALUES (?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET language_code = excluded.language_code
+        """,
+        (user_id, language_code),
+    )
+    await cursor.close()
+
+
 async def list_targets_for_game(
     db: Database,
     game_id: int,

@@ -8,6 +8,7 @@ from aiogram.types.error_event import ErrorEvent
 
 from secret_santa.bot import texts
 from secret_santa.bot.db.models import GameStatus
+from secret_santa.bot.i18n import detect_language
 from secret_santa.bot.services.errors import (
     AlreadyJoinedError,
     GameAccessDeniedError,
@@ -29,45 +30,46 @@ from secret_santa.bot.services.errors import (
 logger = logging.getLogger(__name__)
 
 
-def game_error_text(error: GameError) -> str:
+def game_error_text(language: str, error: GameError) -> str:
     if isinstance(error, InvalidCodeError):
-        return texts.CODE_NOT_FOUND
+        return texts.t(language, "code_not_found")
     if isinstance(error, GameNotFoundError):
-        return texts.GAME_NOT_FOUND
+        return texts.t(language, "game_not_found")
     if isinstance(error, GameNotCollectingError):
         if error.status == GameStatus.ARCHIVED:
-            return texts.GAME_ARCHIVED
-        return texts.JOIN_ALREADY_STARTED
+            return texts.t(language, "game_archived")
+        return texts.t(language, "join_already_started")
     if isinstance(error, AlreadyJoinedError):
-        return texts.ALREADY_JOINED
+        return texts.t(language, "already_joined")
     if isinstance(error, NotEnoughParticipantsError):
-        return texts.NEED_MORE_PLAYERS
+        return texts.t(language, "need_more_players")
     if isinstance(error, GameAlreadyStartedError):
-        return texts.ALREADY_STARTED
+        return texts.t(language, "already_started")
     if isinstance(error, GameArchivedError):
-        return texts.GAME_ARCHIVED
+        return texts.t(language, "game_archived")
     if isinstance(error, GameNotArchivedError):
-        return texts.GAME_NOT_ARCHIVED
+        return texts.t(language, "game_not_archived")
     if isinstance(error, GameNotStartedError):
-        return texts.GAME_NOT_STARTED
+        return texts.t(language, "game_not_started")
     if isinstance(error, InvalidGameNameError):
-        return texts.INVALID_GAME_NAME
+        return texts.t(language, "invalid_game_name")
     if isinstance(error, InvalidWishesError):
-        return texts.INVALID_WISHES
+        return texts.t(language, "invalid_wishes")
     if isinstance(error, GameAccessDeniedError):
-        return texts.NO_ACCESS
+        return texts.t(language, "no_access")
     if isinstance(error, NotOrganizerError):
-        return texts.NOT_ORGANIZER
+        return texts.t(language, "not_organizer")
     if isinstance(error, NotParticipantError):
-        return texts.NOT_PARTICIPANT
-    return texts.INTERNAL_ERROR
+        return texts.t(language, "not_participant")
+    return texts.t(language, "internal_error")
 
 
 async def notify_game_error(
     event: Message | CallbackQuery,
     error: GameError,
+    language: str,
 ) -> None:
-    text = game_error_text(error)
+    text = game_error_text(language, error)
     if isinstance(event, Message):
         await event.answer(text)
     else:
@@ -80,8 +82,14 @@ async def handle_unexpected_error(event: ErrorEvent) -> bool:
         "Unhandled update error",
         exc_info=(type(error), error, error.__traceback__),
     )
-    text = game_error_text(error) if isinstance(error, GameError) else texts.INTERNAL_ERROR
     update = event.update
+    from_user = None
+    if update.message is not None:
+        from_user = update.message.from_user
+    elif update.callback_query is not None:
+        from_user = update.callback_query.from_user
+    language = detect_language(from_user.language_code if from_user is not None else None)
+    text = game_error_text(language, error) if isinstance(error, GameError) else texts.t(language, "internal_error")
     try:
         if update.callback_query is not None:
             await update.callback_query.answer(text, show_alert=True)

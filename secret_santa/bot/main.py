@@ -18,8 +18,18 @@ from secret_santa.bot.handlers.errors import handle_unexpected_error
 from secret_santa.bot.handlers.join_game import router as join_game_router
 from secret_santa.bot.handlers.organizer import router as organizer_router
 from secret_santa.bot.handlers.participant import router as participant_router
+from secret_santa.bot.handlers.settings import router as settings_router
+from secret_santa.bot.middlewares import LanguageMiddleware
 
 logger = logging.getLogger(__name__)
+
+
+def _bot_commands(language: str) -> list[BotCommand]:
+    return [
+        BotCommand(command="start", description=texts.t(language, "command_start")),
+        BotCommand(command="my_games", description=texts.t(language, "command_my_games")),
+        BotCommand(command="cancel", description=texts.t(language, "command_cancel")),
+    ]
 
 
 async def run() -> None:
@@ -32,21 +42,19 @@ async def run() -> None:
     try:
         db = await Database.connect(config.database_path)
         dispatcher = Dispatcher(storage=MemoryStorage())
+        dispatcher.message.middleware(LanguageMiddleware())
+        dispatcher.callback_query.middleware(LanguageMiddleware())
         dispatcher.errors.register(handle_unexpected_error)
         dispatcher.include_routers(
             common_router,
+            settings_router,
             create_game_router,
             join_game_router,
             organizer_router,
             participant_router,
         )
-        await bot.set_my_commands(
-            [
-                BotCommand(command="start", description=texts.COMMAND_START),
-                BotCommand(command="my_games", description=texts.COMMAND_MY_GAMES),
-                BotCommand(command="cancel", description=texts.COMMAND_CANCEL),
-            ]
-        )
+        await bot.set_my_commands(_bot_commands("ru"))
+        await bot.set_my_commands(_bot_commands("en"), language_code="en")
         await dispatcher.start_polling(bot, db=db, config=config)
     finally:
         if db is not None:

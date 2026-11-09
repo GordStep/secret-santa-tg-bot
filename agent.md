@@ -4,7 +4,8 @@ Telegram bot for playing "Secret Santa" (Тайный Санта) with support f
 multiple concurrent games, organizer/member roles, invitation codes,
 derangement-based gift assignment, and gift-readiness tracking.
 
-- **Language of bot UI:** Russian (all user-facing strings).
+- **Language of bot UI:** Russian and English (bilingual), stored as JSON locale
+  files and auto-detected from the Telegram `language_code`.
 - **Language of code/comments/docs:** English.
 - **Stack:** Python 3.11+, aiogram 3.x, SQLite (aiosqlite or SQLAlchemy Core),
   aiogram FSM, inline keyboards.
@@ -13,8 +14,9 @@ derangement-based gift assignment, and gift-readiness tracking.
 
 ## 2. Non-Negotiable Rules
 
-1. **All bot-facing strings are Russian.** No English leaks into messages,
-   button labels, or error texts. Keep them in a single `texts.py` module.
+1. **All bot-facing strings are localized.** Russian and English live in JSON
+   files under `bot/locales/` and are read via `bot/i18n.py`; no inline literals
+   in handlers.
 2. **No fixed points in the derangement.** A user never gifts to themselves.
 3. **`(game_id, user_id)` is unique.** A user joins a given game at most once.
 4. **Target secrecy.** A participant's target is delivered only via the bot's
