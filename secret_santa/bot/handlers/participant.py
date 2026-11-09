@@ -27,17 +27,19 @@ async def show_target(
     callback: CallbackQuery,
     db: Database,
     bot: Bot,
+    lang: str,
 ) -> None:
     game_id = _game_id(callback.data)
     try:
         result = await get_participant_target(db, game_id, callback.from_user.id)
     except GameError as error:
-        await notify_game_error(callback, error)
+        await notify_game_error(callback, error, lang)
         return
     try:
         await bot.send_message(
             callback.from_user.id,
             texts.target_assignment(
+                lang,
                 result.game.name,
                 result.target,
                 result.participant.gift_ready,
@@ -45,18 +47,18 @@ async def show_target(
         )
     except TelegramAPIError:
         logger.warning("Could not deliver a target to recipient %s", callback.from_user.id)
-        await callback.answer(texts.TARGET_DELIVERY_FAILED, show_alert=True)
+        await callback.answer(texts.t(lang, "target_delivery_failed"), show_alert=True)
         return
-    await callback.answer(texts.TARGET_SENT)
+    await callback.answer(texts.t(lang, "target_sent"))
 
 
 @router.callback_query(F.data.regexp(r"^participant:ready:\d+$"))
-async def mark_ready(callback: CallbackQuery, db: Database) -> None:
+async def mark_ready(callback: CallbackQuery, db: Database, lang: str) -> None:
     game_id = _game_id(callback.data)
     try:
         result = await mark_gift_ready(db, game_id, callback.from_user.id)
     except GameError as error:
-        await notify_game_error(callback, error)
+        await notify_game_error(callback, error, lang)
         return
-    text = texts.GIFT_READY_SUCCESS if result.changed else texts.GIFT_ALREADY_READY
+    text = texts.t(lang, "gift_ready_success") if result.changed else texts.t(lang, "gift_already_ready")
     await callback.answer(text, show_alert=True)

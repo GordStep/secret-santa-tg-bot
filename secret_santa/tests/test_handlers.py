@@ -18,15 +18,20 @@ from secret_santa.bot.handlers.errors import handle_unexpected_error
 from secret_santa.bot.handlers.join_game import router as join_game_router
 from secret_santa.bot.handlers.organizer import router as organizer_router
 from secret_santa.bot.handlers.participant import router as participant_router
+from secret_santa.bot.handlers.settings import router as settings_router
+from secret_santa.bot.middlewares import LanguageMiddleware
 from secret_santa.bot.services.games import get_game_details, list_user_games
 
 
 @pytest.fixture(scope="module")
 def dispatcher() -> Dispatcher:
     dispatcher = Dispatcher(storage=MemoryStorage())
+    dispatcher.message.middleware(LanguageMiddleware())
+    dispatcher.callback_query.middleware(LanguageMiddleware())
     dispatcher.errors.register(handle_unexpected_error)
     dispatcher.include_routers(
         common_router,
+        settings_router,
         create_game_router,
         join_game_router,
         organizer_router,
@@ -65,12 +70,13 @@ def _callback_answers(bot: Bot) -> list[AnswerCallbackQuery]:
     ]
 
 
-def _user(user_id: int) -> User:
+def _user(user_id: int, language_code: str | None = None) -> User:
     return User(
         id=user_id,
         is_bot=False,
         first_name=f"User {user_id}",
         username=f"user{user_id}",
+        language_code=language_code,
     )
 
 
@@ -107,6 +113,12 @@ async def _feed(
 ) -> None:
     result = await dispatcher.feed_update(bot, update, db=db)
     assert result is not False
+
+
+def _keyboard_texts(bot: Bot) -> list[list[str]]:
+    menu_message = _send_messages(bot)[-1]
+    assert menu_message.reply_markup is not None
+    return [[button.text for button in row] for row in menu_message.reply_markup.keyboard]
 
 
 @pytest.mark.asyncio
@@ -191,7 +203,7 @@ async def test_handler_game_flow_without_network(
         _callback(second, 13, f"participant:ready:{game.id}"),
     )
     assert any(
-        method.text == texts.GAME_ARCHIVED for method in _callback_answers(bot)
+        method.text == texts.t("ru", "game_archived") for method in _callback_answers(bot)
     )
     await bot.session.close()
 
@@ -219,14 +231,14 @@ async def test_archived_game_deletion_flow(
     game_markup = _send_messages(bot)[-1].reply_markup
     assert game_markup is not None
     assert any(
-        button.text == texts.DELETE_GAME_BUTTON
+        button.text == texts.t("ru", "delete_game_button")
         and button.callback_data == f"organizer:delete:{game.id}"
         for row in game_markup.inline_keyboard
         for button in row
     )
 
     await _feed(dispatcher, bot, db, _callback(organizer, 6, f"organizer:delete:{game.id}"))
-    assert _send_messages(bot)[-1].text == texts.DELETE_CONFIRMATION
+    assert _send_messages(bot)[-1].text == texts.t("ru", "delete_confirmation")
     await _feed(
         dispatcher,
         bot,
@@ -235,7 +247,7 @@ async def test_archived_game_deletion_flow(
     )
 
     assert await list_user_games(db, organizer.id) == ()
-    assert _send_messages(bot)[-1].text == texts.DELETED_SUCCESS
+    assert _send_messages(bot)[-1].text == texts.t("ru", "deleted_success")
     await bot.session.close()
 
 
@@ -254,7 +266,7 @@ async def test_invite_link_asks_for_wishes_and_joins_user(
 
     await _feed(dispatcher, bot, db, _update(participant, 3, f"/start {game.code}"))
 
-    assert _send_messages(bot)[-1].text == texts.ASK_WISHES
+    assert _send_messages(bot)[-1].text == texts.t("ru", "ask_wishes")
     assert await list_user_games(db, participant.id) == ()
 
     await _feed(dispatcher, bot, db, _update(participant, 4, "Books"))
@@ -262,10 +274,11 @@ async def test_invite_link_asks_for_wishes_and_joins_user(
     assert details.participant is not None
     assert details.participant.wishes == "Books"
     assert any(
-        method.chat_id == participant.id and method.text == texts.joined_game(game.name)
+        method.chat_id == participant.id and method.text == texts.joined_game("ru", game.name)
         for method in _send_messages(bot)
     )
     expected_notification = texts.organizer_participant_joined(
+        "ru",
         game.name,
         participant.username,
         participant.first_name,
@@ -289,7 +302,7 @@ async def test_cancel_command_interrupts_fsm(
     await _feed(dispatcher, bot, db, _update(organizer, 2, "/cancel"))
 
     assert await list_user_games(db, 900) == ()
-    assert any(method.text == texts.CANCELLED for method in _send_messages(bot))
+    assert any(method.text == texts.t("ru", "cancelled") for method in _send_messages(bot))
     await bot.session.close()
 
 
@@ -303,27 +316,140 @@ async def test_reply_main_menu_buttons(
 
     await _feed(dispatcher, bot, db, _update(user, 1, "/start"))
     menu_message = _send_messages(bot)[-1]
-    assert menu_message.text == texts.START_MESSAGE
+    assert menu_message.text == texts.t("ru", "start_message")
     assert menu_message.reply_markup is not None
     assert menu_message.reply_markup.resize_keyboard is True
     assert [
         [button.text for button in row]
         for row in menu_message.reply_markup.keyboard
     ] == [
-        [texts.CREATE_GAME_BUTTON, texts.JOIN_GAME_BUTTON],
-        [texts.MY_GAMES_BUTTON, texts.ABOUT_BOT_BUTTON],
+        [texts.t("ru", "create_game_button"), texts.t("ru", "join_game_button")],
+        [texts.t("ru", "my_games_button"), texts.t("ru", "about_bot_button")],
+        [texts.t("ru", "settings_button")],
     ]
 
-    await _feed(dispatcher, bot, db, _update(user, 2, texts.ABOUT_BOT_BUTTON))
-    assert _send_messages(bot)[-1].text == texts.ABOUT_BOT
+    await _feed(dispatcher, bot, db, _update(user, 2, texts.t("ru", "about_bot_button")))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "about_bot")
 
-    await _feed(dispatcher, bot, db, _update(user, 3, texts.MY_GAMES_BUTTON))
-    assert _send_messages(bot)[-1].text == texts.NO_GAMES
+    await _feed(dispatcher, bot, db, _update(user, 3, texts.t("ru", "my_games_button")))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "no_games")
 
-    await _feed(dispatcher, bot, db, _update(user, 4, texts.CREATE_GAME_BUTTON))
-    assert _send_messages(bot)[-1].text == texts.ASK_GAME_NAME
+    await _feed(dispatcher, bot, db, _update(user, 4, texts.t("ru", "create_game_button")))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "ask_game_name")
 
-    await _feed(dispatcher, bot, db, _update(user, 5, texts.ABOUT_BOT_BUTTON))
-    await _feed(dispatcher, bot, db, _update(user, 6, texts.JOIN_GAME_BUTTON))
-    assert _send_messages(bot)[-1].text == texts.ASK_CODE
+    await _feed(dispatcher, bot, db, _update(user, 5, texts.t("ru", "about_bot_button")))
+    await _feed(dispatcher, bot, db, _update(user, 6, texts.t("ru", "join_game_button")))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "ask_code")
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_english_localization(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    user = _user(700, language_code="en")
+
+    await _feed(dispatcher, bot, db, _update(user, 1, "/start"))
+    menu_message = _send_messages(bot)[-1]
+    assert menu_message.text == texts.t("en", "start_message")
+    assert menu_message.reply_markup is not None
+    assert [
+        [button.text for button in row]
+        for row in menu_message.reply_markup.keyboard
+    ] == [
+        [texts.t("en", "create_game_button"), texts.t("en", "join_game_button")],
+        [texts.t("en", "my_games_button"), texts.t("en", "about_bot_button")],
+        [texts.t("en", "settings_button")],
+    ]
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_unknown_language_falls_back_to_russian(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    user = _user(701, language_code="fr")
+
+    await _feed(dispatcher, bot, db, _update(user, 1, "/start"))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "start_message")
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_settings_language_switch_persists(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    user = _user(702, language_code="en")
+
+    await _feed(dispatcher, bot, db, _update(user, 1, "/start"))
+    await _feed(dispatcher, bot, db, _update(user, 2, texts.t("en", "settings_button")))
+    assert _send_messages(bot)[-1].text == texts.t("en", "settings_header")
+
+    await _feed(dispatcher, bot, db, _callback(user, 3, "settings:lang:ru"))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "language_changed")
+
+    await _feed(dispatcher, bot, db, _update(user, 4, "/start"))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "start_message")
+    assert _keyboard_texts(bot) == [
+        [texts.t("ru", "create_game_button"), texts.t("ru", "join_game_button")],
+        [texts.t("ru", "my_games_button"), texts.t("ru", "about_bot_button")],
+        [texts.t("ru", "settings_button")],
+    ]
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_settings_button_interrupts_dialog(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    user = _user(703, language_code="ru")
+
+    await _feed(dispatcher, bot, db, _update(user, 1, texts.t("ru", "create_game_button")))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "ask_game_name")
+
+    await _feed(dispatcher, bot, db, _update(user, 2, texts.t("ru", "settings_button")))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "settings_header")
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_target_notifications_use_recipient_language(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(800, language_code="en")
+    first = _user(801, language_code="ru")
+    second = _user(802, language_code="en")
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
+    await _feed(dispatcher, bot, db, _update(organizer, 2, "Mixed"))
+    game = (await list_user_games(db, organizer.id))[0]
+
+    await _feed(dispatcher, bot, db, _callback(first, 3, "join_game"))
+    await _feed(dispatcher, bot, db, _update(first, 4, game.code))
+    await _feed(dispatcher, bot, db, _callback(first, 5, "join:skip_wishes"))
+
+    await _feed(dispatcher, bot, db, _callback(second, 6, "join_game"))
+    await _feed(dispatcher, bot, db, _update(second, 7, game.code))
+    await _feed(dispatcher, bot, db, _callback(second, 8, "join:skip_wishes"))
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 9, f"organizer:start:{game.id}"))
+
+    first_messages = [method for method in _send_messages(bot) if method.chat_id == first.id]
+    second_messages = [method for method in _send_messages(bot) if method.chat_id == second.id]
+    assert any(
+        method.text.startswith("Игра: <b>Mixed</b>") for method in first_messages
+    )
+    assert any(
+        method.text.startswith("Game: <b>Mixed</b>") for method in second_messages
+    )
     await bot.session.close()

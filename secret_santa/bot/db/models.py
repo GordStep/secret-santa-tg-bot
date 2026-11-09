@@ -68,6 +68,11 @@ CREATE TABLE IF NOT EXISTS participants (
 
 CREATE INDEX IF NOT EXISTS idx_participants_game_id ON participants(game_id);
 CREATE INDEX IF NOT EXISTS idx_participants_user_id ON participants(user_id);
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    language_code TEXT NOT NULL
+);
 """
 
 

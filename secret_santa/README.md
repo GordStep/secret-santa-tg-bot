@@ -1,8 +1,10 @@
 # Secret Santa Telegram Bot
 
 A multi-game Secret Santa bot built with Python 3.11+, aiogram 3, and SQLite.
-The bot UI is in Russian. A user may organize multiple active games and may also
-join games as a participant, including their own games.
+The bot UI is available in Russian and English. The language is auto-detected from
+the Telegram `language_code` and can be changed in the bot's Settings menu. A user
+may organize multiple active games and may also join games as a participant,
+including their own games.
 
 ## Features
 
@@ -14,6 +16,8 @@ join games as a participant, including their own games.
 - Organizer participant list with gift-readiness status.
 - One-way game lifecycle: collecting, started, archived.
 - Organizer-only deletion of archived games with confirmation.
+- Russian/English localization with per-user language stored in SQLite.
+- Language auto-detection from Telegram metadata plus a Settings menu to switch.
 
 ## Setup
 
@@ -66,7 +70,8 @@ python -m pytest secret_santa/tests
 - Starting a game stores all assignments and the new status in one transaction.
   Notification failures do not undo the draw; participants can view the stored
   target later.
-- All Russian UI strings and HTML rendering live in `bot/texts.py`; user input
-  is escaped before being inserted into HTML messages.
+- All translatable UI strings live in JSON files under `bot/locales/` (one per
+  language). `bot/i18n.py` loads them and `bot/texts.py` composes the localized
+  HTML messages; user input is escaped before being inserted into HTML messages.
 - Game codes are checked against SQLite before insertion, while the database
   unique constraint remains the final collision guard.

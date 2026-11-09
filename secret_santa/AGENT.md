@@ -1,6 +1,7 @@
 # Project Guidance
 
-- Keep all bot-facing Russian strings in `bot/texts.py`.
+- Keep all bot-facing strings in the JSON locale files under `bot/locales/` and
+  access them only through `bot/i18n.py` / `bot/texts.py`.
 - Keep aiogram imports out of `bot/services/` and business rules out of handlers.
 - Preserve unique `(game_id, user_id)` pairs and unique eight-character game codes.
 - Never reveal assignments in organizer views or log giver/target pairs.
