@@ -4,8 +4,10 @@ import asyncio
 
 import pytest
 
+from secret_santa.bot.db import repo
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.db.models import GameStatus
+from secret_santa.bot.lang import set_user_language
 from secret_santa.bot.services.errors import (
     AlreadyJoinedError,
     GameAlreadyStartedError,
@@ -215,3 +217,37 @@ async def test_organizer_can_edit_description_until_game_is_archived(db: Databas
     await archive_game(db, game.id, 900)
     with pytest.raises(GameArchivedError):
         await update_game_description(db, game.id, 900, "Archived")
+
+
+@pytest.mark.asyncio
+async def test_language_write_and_game_creation_are_serialized(
+    db: Database,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_set_user_language = repo.set_user_language
+    write_started = asyncio.Event()
+    finish_write = asyncio.Event()
+
+    async def paused_set_user_language(
+        database: Database,
+        user_id: int,
+        language_code: str,
+    ) -> None:
+        await original_set_user_language(database, user_id, language_code)
+        write_started.set()
+        await finish_write.wait()
+
+    monkeypatch.setattr(repo, "set_user_language", paused_set_user_language)
+    language_task = asyncio.create_task(set_user_language(db, 900, "en"))
+    await write_started.wait()
+
+    game_task = asyncio.create_task(create_game(db, 900, "Concurrent game"))
+    await asyncio.sleep(0)
+    game_was_blocked = not game_task.done()
+    finish_write.set()
+    await language_task
+    game = await game_task
+
+    assert game_was_blocked
+    assert game.name == "Concurrent game"
+    assert await repo.get_user_language(db, 900) == "en"

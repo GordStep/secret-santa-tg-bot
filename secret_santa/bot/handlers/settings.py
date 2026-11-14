@@ -5,11 +5,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from secret_santa.bot import texts
-from secret_santa.bot.db import repo
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.filters import ButtonText
 from secret_santa.bot.i18n import normalize_language
 from secret_santa.bot.keyboards import language_keyboard, main_menu_keyboard, settings_keyboard
+from secret_santa.bot.lang import set_user_language
 
 router = Router(name="settings")
 
@@ -47,8 +47,7 @@ async def set_language_callback(callback: CallbackQuery, db: Database) -> None:
     if callback.data is None or not isinstance(callback.message, Message):
         raise RuntimeError("Callback data is unavailable")
     new_language = normalize_language(callback.data.rsplit(":", maxsplit=1)[1])
-    await repo.set_user_language(db, callback.from_user.id, new_language)
-    await db.commit()
+    await set_user_language(db, callback.from_user.id, new_language)
     await callback.message.answer(
         texts.t(new_language, "language_changed"),
         reply_markup=main_menu_keyboard(new_language),
