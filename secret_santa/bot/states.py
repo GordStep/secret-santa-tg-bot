@@ -11,3 +11,7 @@ class CreateGameState(StatesGroup):
 class JoinGameState(StatesGroup):
     waiting_for_code = State()
     waiting_for_wishes = State()
+
+
+class EditGameDescriptionState(StatesGroup):
+    waiting_for_description = State()

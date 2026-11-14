@@ -85,6 +85,10 @@ def game_keyboard(
         builder.button(text=texts.t(language, "refresh_button"), callback_data=f"game:{game.id}")
         if game.status != GameStatus.ARCHIVED:
             builder.button(
+                text=texts.t(language, "edit_description_button"),
+                callback_data=f"organizer:edit_description:{game.id}",
+            )
+            builder.button(
                 text=texts.t(language, "archive_button"),
                 callback_data=f"organizer:archive:{game.id}",
             )

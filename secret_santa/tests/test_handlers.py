@@ -587,3 +587,58 @@ async def test_long_description_is_sent_within_telegram_message_limit(
         for method in messages
     )
     await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_organizer_can_edit_game_description(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(900)
+    other_user = _user(101)
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
+    await _feed(dispatcher, bot, db, _update(organizer, 2, "Editable"))
+    await _feed(dispatcher, bot, db, _update(organizer, 3, "Initial"))
+    game = (await list_user_games(db, organizer.id))[0]
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 4, f"game:{game.id}"))
+    game_markup = _send_messages(bot)[-1].reply_markup
+    assert game_markup is not None
+    assert any(
+        button.callback_data == f"organizer:edit_description:{game.id}"
+        for row in game_markup.inline_keyboard
+        for button in row
+    )
+
+    await _feed(
+        dispatcher,
+        bot,
+        db,
+        _callback(organizer, 5, f"organizer:edit_description:{game.id}"),
+    )
+    assert _send_messages(bot)[-1].text == texts.t("ru", "ask_edit_game_description")
+
+    await _feed(
+        dispatcher,
+        bot,
+        db,
+        _callback(other_user, 6, f"organizer:edit_description:{game.id}"),
+    )
+    assert any(
+        answer.text == texts.t("ru", "not_organizer") for answer in _callback_answers(bot)
+    )
+
+    await _feed(dispatcher, bot, db, _update(organizer, 7, "<b>Updated</b>"))
+    game = (await list_user_games(db, organizer.id))[0]
+    assert game.description == "<b>Updated</b>"
+    assert any(
+        method.text == texts.t("ru", "description_updated")
+        for method in _send_messages(bot)
+    )
+    assert any(
+        "Описание: &lt;b&gt;Updated&lt;/b&gt;" in method.text
+        for method in _send_messages(bot)
+    )
+    await bot.session.close()

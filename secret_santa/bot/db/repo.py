@@ -143,6 +143,18 @@ async def insert_participant(
     )
 
 
+async def set_game_description(
+    db: Database,
+    game_id: int,
+    description: str | None,
+) -> None:
+    cursor = await db.execute(
+        "UPDATE games SET description = ? WHERE id = ?",
+        (description, game_id),
+    )
+    await cursor.close()
+
+
 async def set_game_status(
     db: Database,
     game_id: int,

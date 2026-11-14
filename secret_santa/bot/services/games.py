@@ -220,6 +220,44 @@ async def get_game_details(
     return GameDetails(game, participant, participants, is_organizer)
 
 
+def _ensure_can_edit_description(game: Game, organizer_id: int) -> None:
+    if game.organizer_id != organizer_id:
+        raise NotOrganizerError
+    if game.status == GameStatus.ARCHIVED:
+        raise GameArchivedError
+
+
+@_synchronized
+async def get_game_for_description_edit(
+    db: Database,
+    game_id: int,
+    organizer_id: int,
+) -> Game:
+    game = await _get_game(db, game_id)
+    _ensure_can_edit_description(game, organizer_id)
+    return game
+
+
+@_synchronized
+async def update_game_description(
+    db: Database,
+    game_id: int,
+    organizer_id: int,
+    description: str | None,
+) -> Game:
+    normalized_description = _normalize_game_description(description)
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        game = await _get_game(db, game_id)
+        _ensure_can_edit_description(game, organizer_id)
+        await repo.set_game_description(db, game_id, normalized_description)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+    return replace(game, description=normalized_description)
+
+
 @_synchronized
 async def start_game(
     db: Database,

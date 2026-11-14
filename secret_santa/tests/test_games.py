@@ -29,6 +29,7 @@ from secret_santa.bot.services.games import (
     list_user_games,
     mark_gift_ready,
     start_game,
+    update_game_description,
     validate_join,
 )
 
@@ -188,3 +189,29 @@ async def test_game_description_is_normalized_and_optional(db: Database) -> None
 
     with pytest.raises(InvalidGameDescriptionError):
         await create_game(db, 900, "Too long", "x" * 3001)
+
+
+@pytest.mark.asyncio
+async def test_organizer_can_edit_description_until_game_is_archived(db: Database) -> None:
+    game = await create_game(db, 900, "Editable", "Initial")
+
+    with pytest.raises(NotOrganizerError):
+        await update_game_description(db, game.id, 901, "Not allowed")
+
+    updated = await update_game_description(db, game.id, 900, "  Before draw  ")
+    assert updated.description == "Before draw"
+    details = await get_game_details(db, game.id, 900)
+    assert details.game.description == "Before draw"
+
+    with pytest.raises(InvalidGameDescriptionError):
+        await update_game_description(db, game.id, 900, "x" * 3001)
+
+    await _join(db, game.id, 101)
+    await _join(db, game.id, 102)
+    await start_game(db, game.id, 900)
+    started = await update_game_description(db, game.id, 900, "After draw")
+    assert started.description == "After draw"
+
+    await archive_game(db, game.id, 900)
+    with pytest.raises(GameArchivedError):
+        await update_game_description(db, game.id, 900, "Archived")
