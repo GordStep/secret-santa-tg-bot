@@ -17,6 +17,7 @@ __all__ = [
     "organizer_list",
     "organizer_participant_joined",
     "participant_game",
+    "participant_wishes",
     "start_result",
     "status_text",
     "t",
@@ -156,6 +157,15 @@ def participant_game(
         status=status_text(language, game.status),
         gift_status=gift_status,
     )
+
+
+def participant_wishes(language: str, participant: Participant) -> str:
+    wishes = (
+        participant.wishes
+        if participant.wishes is not None
+        else t(language, "wishes_not_provided")
+    )
+    return t(language, "participant_wishes", wishes=wishes)
 
 
 def target_assignment(

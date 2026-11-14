@@ -29,6 +29,7 @@ from secret_santa.bot.services.games import (
     delete_archived_game,
     get_game_details,
     get_participant_target,
+    get_participant_wishes,
     join_game,
     list_user_games,
     mark_gift_ready,
@@ -264,9 +265,13 @@ async def test_participant_can_edit_wishes_until_game_is_archived(db: Database) 
 
     updated = await update_participant_wishes(db, game.id, 101, "  Updated wishes  ")
     assert updated.wishes == "Updated wishes"
+    stored = await get_participant_wishes(db, game.id, 101)
+    assert stored.wishes == "Updated wishes"
 
     with pytest.raises(NotParticipantError):
         await update_participant_wishes(db, game.id, 103, "Not allowed")
+    with pytest.raises(NotParticipantError):
+        await get_participant_wishes(db, game.id, 103)
     with pytest.raises(InvalidWishesError):
         await update_participant_wishes(db, game.id, 101, "x" * 2001)
 
@@ -279,3 +284,5 @@ async def test_participant_can_edit_wishes_until_game_is_archived(db: Database) 
     await archive_game(db, game.id, 900)
     with pytest.raises(GameArchivedError):
         await update_participant_wishes(db, game.id, 101, "Archived")
+    archived = await get_participant_wishes(db, game.id, 101)
+    assert archived.wishes == "Updated after draw"

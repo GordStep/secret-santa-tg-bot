@@ -33,6 +33,8 @@
   "description_updated": "Game description updated.",
   "ask_code": "Enter the 8-character game code (Latin letters and digits):",
   "ask_wishes": "Write your gift wishes (up to 2000 characters) or skip this step.",
+  "my_wishes_button": "My wishes",
+  "participant_wishes": "Your wishes:\n{wishes}",
   "edit_wishes_button": "Edit wishes",
   "ask_edit_wishes": "Enter your new gift wishes (up to 2000 characters).",
   "edit_wishes_session_expired": "Editing session expired. Open the game again.",

@@ -351,6 +351,19 @@ async def _get_participant_for_wishes_edit(
 
 
 @_synchronized
+async def get_participant_wishes(
+    db: Database,
+    game_id: int,
+    user_id: int,
+) -> Participant:
+    await _get_game(db, game_id)
+    participant = await repo.get_participant(db, game_id, user_id)
+    if participant is None:
+        raise NotParticipantError
+    return participant
+
+
+@_synchronized
 async def get_participant_for_wishes_edit(
     db: Database,
     game_id: int,

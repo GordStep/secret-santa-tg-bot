@@ -11,7 +11,7 @@ including their own games.
 - Game creation with unique eight-character invitation codes and Telegram invite links.
 - Optional game description of up to 3000 characters, shown when joining and when opening a game from "My games"; organizers can edit it until the game is archived.
 - Joining through `/start <code>` deep links with the usual gift-wishes step.
-- Optional gift wishes and one participation per user per game; participants can edit their wishes until the game is archived.
+- Optional gift wishes and one participation per user per game; participants can view their wishes at any time and edit them until the game is archived.
 - Atomic draw using a derangement, so nobody gifts to themselves.
 - Private target delivery and repeatable target viewing without re-rolling.
 - Organizer participant list with gift-readiness status.

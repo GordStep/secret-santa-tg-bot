@@ -16,6 +16,7 @@ from secret_santa.bot.services.errors import GameError
 from secret_santa.bot.services.games import (
     get_participant_for_wishes_edit,
     get_participant_target,
+    get_participant_wishes,
     mark_gift_ready,
     update_participant_wishes,
 )
@@ -31,6 +32,23 @@ def _game_id(data: str | None) -> int:
     if data is None:
         raise RuntimeError("Callback data is unavailable")
     return int(data.rsplit(":", maxsplit=1)[1])
+
+
+@router.callback_query(F.data.regexp(r"^participant:wishes:\d+$"))
+async def show_wishes(callback: CallbackQuery, db: Database, lang: str) -> None:
+    game_id = _game_id(callback.data)
+    if not isinstance(callback.message, Message):
+        raise RuntimeError("Callback message is unavailable")
+    try:
+        participant = await get_participant_wishes(db, game_id, callback.from_user.id)
+    except GameError as error:
+        await notify_game_error(callback, error, lang)
+        return
+    await callback.message.answer(
+        texts.participant_wishes(lang, participant),
+        parse_mode=None,
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data.regexp(r"^participant:edit_wishes:\d+$"))

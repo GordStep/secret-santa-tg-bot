@@ -750,4 +750,22 @@ async def test_participant_can_edit_wishes_through_dialog(
         for row in game_markup.inline_keyboard
         for button in row
     )
+
+    await _feed(
+        dispatcher,
+        bot,
+        db,
+        _callback(other_user, 5, f"participant:wishes:{game.id}"),
+    )
+    assert _callback_answers(bot)[-1].text == texts.t("ru", "not_participant")
+    await _feed(
+        dispatcher,
+        bot,
+        db,
+        _callback(participant, 6, f"participant:wishes:{game.id}"),
+    )
+    wishes_message = _send_messages(bot)[-1]
+    assert wishes_message.text == texts.participant_wishes("ru", details.participant)
+    assert "<i>Updated wishes</i>" in wishes_message.text
+    assert wishes_message.parse_mode is None
     await bot.session.close()
