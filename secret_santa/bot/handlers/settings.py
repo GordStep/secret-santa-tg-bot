@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiogram import F, Router
+from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -12,6 +13,8 @@ from secret_santa.bot.keyboards import language_keyboard, main_menu_keyboard, se
 from secret_santa.bot.lang import set_user_language
 
 router = Router(name="settings")
+router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 
 
 @router.message(ButtonText("settings_button"))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -18,6 +19,8 @@ from secret_santa.bot.services.games import MAX_GAME_NAME_LENGTH, create_game
 from secret_santa.bot.states import CreateGameState
 
 router = Router(name="create_game")
+router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 
 
 async def _begin_create_game(message: Message, state: FSMContext, lang: str) -> None:

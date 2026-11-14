@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery
 
@@ -13,6 +14,7 @@ from secret_santa.bot.services.errors import GameError
 from secret_santa.bot.services.games import get_participant_target, mark_gift_ready
 
 router = Router(name="participant")
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 logger = logging.getLogger(__name__)
 
 

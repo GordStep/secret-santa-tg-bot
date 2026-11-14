@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiogram import F, Router
+from aiogram.enums import ChatType
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -26,6 +27,8 @@ from secret_santa.bot.services.games import (
 from secret_santa.bot.states import JoinGameState
 
 router = Router(name="common")
+router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 
 
 async def _send_main_menu(message: Message, language: str) -> None:

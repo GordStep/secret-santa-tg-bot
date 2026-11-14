@@ -20,7 +20,7 @@ from secret_santa.bot.handlers.organizer import router as organizer_router
 from secret_santa.bot.handlers.participant import router as participant_router
 from secret_santa.bot.handlers.settings import router as settings_router
 from secret_santa.bot.middlewares import LanguageMiddleware
-from secret_santa.bot.services.games import get_game_details, join_game, list_user_games
+from secret_santa.bot.services.games import create_game, get_game_details, join_game, list_user_games
 
 
 @pytest.fixture(scope="module")
@@ -641,4 +641,42 @@ async def test_organizer_can_edit_game_description(
         "Описание: &lt;b&gt;Updated&lt;/b&gt;" in method.text
         for method in _send_messages(bot)
     )
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_group_updates_cannot_access_or_manage_games(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(900)
+    game = await create_game(db, organizer.id, "Private game")
+    await join_game(db, game.id, 101, "user101", "User 101", None)
+    await join_game(db, game.id, 102, "user102", "User 102", None)
+    group_chat = Chat(id=-100900, type="group")
+
+    group_message = Message(
+        message_id=1,
+        date=datetime.now(timezone.utc),
+        chat=group_chat,
+        from_user=organizer,
+        text="/my_games",
+    )
+    await _feed(dispatcher, bot, db, Update(update_id=1, message=group_message))
+
+    for update_id, data in ((2, f"game:{game.id}"), (3, f"organizer:start:{game.id}")):
+        callback = CallbackQuery(
+            id=str(update_id),
+            from_user=organizer,
+            chat_instance="group-chat",
+            data=data,
+            message=group_message,
+        )
+        await _feed(dispatcher, bot, db, Update(update_id=update_id, callback_query=callback))
+
+    assert _send_messages(bot) == []
+    assert _callback_answers(bot) == []
+    details = await get_game_details(db, game.id, organizer.id)
+    assert details.game.status == GameStatus.COLLECTING
     await bot.session.close()

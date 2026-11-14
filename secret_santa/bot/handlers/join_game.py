@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, User
 
@@ -17,6 +18,8 @@ from secret_santa.bot.services.games import join_game, validate_join
 from secret_santa.bot.states import JoinGameState
 
 router = Router(name="join_game")
+router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 
 
 async def _begin_join_game(message: Message, state: FSMContext, lang: str) -> None:

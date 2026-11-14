@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -32,6 +33,8 @@ from secret_santa.bot.services.games import (
 from secret_santa.bot.states import EditGameDescriptionState
 
 router = Router(name="organizer")
+router.message.filter(F.chat.type == ChatType.PRIVATE)
+router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 logger = logging.getLogger(__name__)
 
 
