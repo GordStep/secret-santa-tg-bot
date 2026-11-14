@@ -13,6 +13,7 @@ from secret_santa.bot import texts
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.handlers.errors import notify_game_error
 from secret_santa.bot.handlers.game_info import answer_game_message
+from secret_santa.bot.handlers.utils import parse_game_id
 from secret_santa.bot.keyboards import (
     archive_confirmation_keyboard,
     cancel_keyboard,
@@ -39,12 +40,6 @@ router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 logger = logging.getLogger(__name__)
 
 
-def _game_id(data: str | None) -> int:
-    if data is None:
-        raise RuntimeError("Callback data is unavailable")
-    return int(data.rsplit(":", maxsplit=1)[1])
-
-
 @router.callback_query(F.data.regexp(r"^organizer:edit_description:\d+$"))
 async def begin_description_edit(
     callback: CallbackQuery,
@@ -52,7 +47,7 @@ async def begin_description_edit(
     db: Database,
     lang: str,
 ) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
     try:
@@ -118,8 +113,11 @@ async def process_description_edit(
     )
 
 
+MAX_SEND_ATTEMPTS = 5
+
+
 async def _send_target_message(bot: Bot, recipient_user_id: int, text: str) -> bool:
-    while True:
+    for _ in range(MAX_SEND_ATTEMPTS):
         try:
             await bot.send_message(recipient_user_id, text)
         except TelegramRetryAfter as error:
@@ -128,6 +126,7 @@ async def _send_target_message(bot: Bot, recipient_user_id: int, text: str) -> b
             return False
         else:
             return True
+    return False
 
 
 @router.callback_query(F.data.regexp(r"^organizer:start:\d+$"))
@@ -137,7 +136,7 @@ async def start_draw(
     bot: Bot,
     lang: str,
 ) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
     try:
@@ -175,7 +174,7 @@ async def start_draw(
 
 @router.callback_query(F.data.regexp(r"^organizer:archive:\d+$"))
 async def request_archive(callback: CallbackQuery, lang: str) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
     await callback.message.answer(
@@ -191,7 +190,7 @@ async def confirm_archive(
     db: Database,
     lang: str,
 ) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
     try:
@@ -208,7 +207,7 @@ async def confirm_archive(
 
 @router.callback_query(F.data.regexp(r"^organizer:delete:\d+$"))
 async def request_deletion(callback: CallbackQuery, lang: str) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
     await callback.message.answer(
@@ -224,7 +223,7 @@ async def confirm_deletion(
     db: Database,
     lang: str,
 ) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
     try:

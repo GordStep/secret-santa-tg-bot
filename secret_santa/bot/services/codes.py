@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import secrets
 import string
 from collections.abc import Callable
 
@@ -16,9 +17,9 @@ def generate_code(
     *,
     rng: random.Random | None = None,
 ) -> str:
-    chooser = rng if rng is not None else random
+    chooser = rng.choice if rng is not None else secrets.choice
     while True:
-        code = "".join(chooser.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
+        code = "".join(chooser(CODE_ALPHABET) for _ in range(CODE_LENGTH))
         if is_allowed is None or is_allowed(code):
             return code
 

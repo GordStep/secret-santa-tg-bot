@@ -7,6 +7,7 @@ from aiogram.types import CallbackQuery, Message, User
 
 from secret_santa.bot import texts
 from secret_santa.bot.db.database import Database
+from secret_santa.bot.db.models import Game
 from secret_santa.bot.filters import ButtonText
 from secret_santa.bot.handlers.errors import notify_game_error
 from secret_santa.bot.handlers.game_info import answer_game_message
@@ -40,6 +41,31 @@ async def join_game_button(message: Message, state: FSMContext, lang: str) -> No
     await _begin_join_game(message, state, lang)
 
 
+async def prompt_for_wishes(
+    message: Message,
+    state: FSMContext,
+    game: Game,
+    language: str,
+) -> None:
+    await state.update_data(
+        game_id=game.id,
+        game_name=game.name,
+        organizer_id=game.organizer_id,
+    )
+    await state.set_state(JoinGameState.waiting_for_wishes)
+    await answer_game_message(
+        message,
+        language,
+        game,
+        texts.join_game_info(language, game),
+        texts.join_game_info(language, game, include_description=False),
+    )
+    await message.answer(
+        texts.t(language, "ask_wishes"),
+        reply_markup=wishes_keyboard(language),
+    )
+
+
 @router.message(JoinGameState.waiting_for_code)
 async def process_join_code(
     message: Message,
@@ -57,20 +83,7 @@ async def process_join_code(
     except GameError as error:
         await notify_game_error(message, error, lang)
         return
-    await state.update_data(
-        game_id=game.id,
-        game_name=game.name,
-        organizer_id=game.organizer_id,
-    )
-    await state.set_state(JoinGameState.waiting_for_wishes)
-    await answer_game_message(
-        message,
-        lang,
-        game,
-        texts.join_game_info(lang, game),
-        texts.join_game_info(lang, game, include_description=False),
-    )
-    await message.answer(texts.t(lang, "ask_wishes"), reply_markup=wishes_keyboard(lang))
+    await prompt_for_wishes(message, state, game, lang)
 
 
 async def _finish_join(

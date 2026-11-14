@@ -38,30 +38,47 @@ secret_santa/
 │   ├── __init__.py
 │   ├── main.py              # entrypoint, dispatcher setup
 │   ├── config.py            # env vars, settings
-│   ├── texts.py             # ALL Russian user-facing strings
-│   ├── keyboards.py         # inline keyboards
+│   ├── i18n.py              # locale loading + translate()
+│   ├── texts.py             # localized HTML message composition + escaping
+│   ├── lang.py              # per-user language persistence
+│   ├── keyboards.py         # inline/reply keyboards
 │   ├── states.py            # FSM states
+│   ├── middlewares.py       # LanguageMiddleware
+│   ├── filters.py           # ButtonText
+│   ├── notifications.py     # outbound Telegram notifications
+│   ├── locales/
+│   │   ├── ru.json
+│   │   └── en.json
 │   ├── handlers/
 │   │   ├── __init__.py
-│   │   ├── common.py        # /start, main menu
+│   │   ├── common.py        # /start, main menu, my games
 │   │   ├── create_game.py
 │   │   ├── join_game.py
-│   │   ├── organizer.py     # start, list, archive
-│   │   └── participant.py   # my target, mark gift ready
+│   │   ├── organizer.py     # start, list, archive, delete
+│   │   ├── participant.py   # wishes, target, mark gift ready
+│   │   ├── settings.py      # language switch
+│   │   ├── game_info.py     # message chunking helper
+│   │   ├── errors.py        # error mapping + global handler
+│   │   └── utils.py         # callback data helpers
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── games.py         # create/join/start/archive logic
 │   │   ├── codes.py         # code generation + collision check
-│   │   └── derangement.py   # make_derangement()
+│   │   ├── derangement.py   # make_derangement()
+│   │   └── errors.py
 │   └── db/
 │       ├── __init__.py
-│       ├── models.py        # schema (SQLAlchemy Core or raw SQL)
+│       ├── models.py        # schema + migrations
+│       ├── database.py      # connection + lock wrapper
 │       └── repo.py          # data access functions
-├── migrations/              # optional, for schema evolution
 ├── tests/
+│   ├── conftest.py
 │   ├── test_derangement.py
 │   ├── test_codes.py
-│   └── test_games.py
+│   ├── test_games.py
+│   ├── test_handlers.py
+│   ├── test_migrations.py
+│   └── test_sql_injection.py
 ├── .env.example
 ├── requirements.txt
 ├── README.md
@@ -73,7 +90,9 @@ Rules:
   services, and format replies.
 - Services contain **no aiogram imports** — pure Python, testable.
 - DB layer exposes **functions**, not ORM objects, to handlers.
-- All Russian strings live in `texts.py`. No inline literals in handlers.
+- All translatable strings live in JSON files under `bot/locales/` and are
+  read via `bot/i18n.py`; `bot/texts.py` composes localized HTML messages.
+  No inline literals in handlers.
 
 ---
 
@@ -173,7 +192,7 @@ When asked to implement a feature or the whole project, return:
 
 Do NOT:
 - Invent dependencies not in `requirements.txt` without stating them.
-- Put Russian strings outside `texts.py`.
+- Put translatable strings outside `bot/locales/`.
 - Put aiogram imports inside `services/`.
 - Skip error cases from §6.
 
@@ -215,7 +234,7 @@ Do NOT:
 
 A feature is done when:
 - [ ] Code compiles, `pytest` passes.
-- [ ] All user-facing strings are in `texts.py` and in Russian.
+- [ ] All user-facing strings are in JSON locales (Russian and English).
 - [ ] All error cases from §6 handled.
 - [ ] No aiogram imports in `services/`.
 - [ ] No fixed points in derangement (covered by tests).

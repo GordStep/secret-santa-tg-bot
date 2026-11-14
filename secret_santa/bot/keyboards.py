@@ -107,10 +107,11 @@ def game_keyboard(
                 text=texts.t(language, "edit_wishes_button"),
                 callback_data=f"participant:edit_wishes:{game.id}",
             )
-        builder.button(
-            text=texts.t(language, "my_target_button"),
-            callback_data=f"participant:target:{game.id}",
-        )
+        if participant.target_user_id is not None:
+            builder.button(
+                text=texts.t(language, "my_target_button"),
+                callback_data=f"participant:target:{game.id}",
+            )
         if game.status == GameStatus.STARTED and not participant.gift_ready:
             builder.button(
                 text=texts.t(language, "gift_ready_button"),

@@ -11,11 +11,12 @@ from secret_santa.bot.db.database import Database
 from secret_santa.bot.filters import ButtonText
 from secret_santa.bot.handlers.errors import notify_game_error
 from secret_santa.bot.handlers.game_info import answer_game_message
+from secret_santa.bot.handlers.join_game import prompt_for_wishes
+from secret_santa.bot.handlers.utils import parse_game_id
 from secret_santa.bot.keyboards import (
     game_keyboard,
     games_keyboard,
     main_menu_keyboard,
-    wishes_keyboard,
 )
 from secret_santa.bot.services.errors import GameError
 from secret_santa.bot.services.games import (
@@ -24,7 +25,6 @@ from secret_santa.bot.services.games import (
     list_user_games,
     validate_join,
 )
-from secret_santa.bot.states import JoinGameState
 
 router = Router(name="common")
 router.message.filter(F.chat.type == ChatType.PRIVATE)
@@ -32,7 +32,10 @@ router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 
 
 async def _send_main_menu(message: Message, language: str) -> None:
-    await message.answer(texts.t(language, "start_message"), reply_markup=main_menu_keyboard(language))
+    await message.answer(
+        texts.t(language, "start_message"),
+        reply_markup=main_menu_keyboard(language),
+    )
 
 
 async def _send_my_games(
@@ -43,7 +46,10 @@ async def _send_my_games(
 ) -> None:
     games = await list_user_games(db, user_id)
     if not games:
-        await message.answer(texts.t(language, "no_games"), reply_markup=main_menu_keyboard(language))
+        await message.answer(
+            texts.t(language, "no_games"),
+            reply_markup=main_menu_keyboard(language),
+        )
         return
     await message.answer(
         texts.t(language, "my_games_header"),
@@ -103,20 +109,7 @@ async def _join_by_invite(
     except GameError as error:
         await notify_game_error(message, error, language)
         return
-    await state.update_data(
-        game_id=game.id,
-        game_name=game.name,
-        organizer_id=game.organizer_id,
-    )
-    await state.set_state(JoinGameState.waiting_for_wishes)
-    await answer_game_message(
-        message,
-        language,
-        game,
-        texts.join_game_info(language, game),
-        texts.join_game_info(language, game, include_description=False),
-    )
-    await message.answer(texts.t(language, "ask_wishes"), reply_markup=wishes_keyboard(language))
+    await prompt_for_wishes(message, state, game, language)
 
 
 @router.message(CommandStart())
@@ -195,7 +188,7 @@ async def game_details_callback(
 ) -> None:
     if callback.data is None or not isinstance(callback.message, Message):
         raise RuntimeError("Callback data is unavailable")
-    game_id = int(callback.data.rsplit(":", maxsplit=1)[1])
+    game_id = parse_game_id(callback.data)
     try:
         details = await get_game_details(db, game_id, callback.from_user.id)
     except GameError as error:

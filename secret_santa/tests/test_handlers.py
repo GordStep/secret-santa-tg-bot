@@ -21,7 +21,12 @@ from secret_santa.bot.handlers.organizer import _send_target_message, router as 
 from secret_santa.bot.handlers.participant import router as participant_router
 from secret_santa.bot.handlers.settings import router as settings_router
 from secret_santa.bot.middlewares import LanguageMiddleware
-from secret_santa.bot.services.games import create_game, get_game_details, join_game, list_user_games
+from secret_santa.bot.services.games import (
+    create_game,
+    get_game_details,
+    join_game,
+    list_user_games,
+)
 
 
 @pytest.fixture(scope="module")

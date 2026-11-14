@@ -92,7 +92,11 @@ async def handle_unexpected_error(event: ErrorEvent) -> bool:
     elif update.callback_query is not None:
         from_user = update.callback_query.from_user
     language = detect_language(from_user.language_code if from_user is not None else None)
-    text = game_error_text(language, error) if isinstance(error, GameError) else texts.t(language, "internal_error")
+    text = (
+        game_error_text(language, error)
+        if isinstance(error, GameError)
+        else texts.t(language, "internal_error")
+    )
     try:
         if update.callback_query is not None:
             await update.callback_query.answer(text, show_alert=True)

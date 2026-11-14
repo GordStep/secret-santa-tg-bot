@@ -11,6 +11,7 @@ from aiogram.types import CallbackQuery, Message
 from secret_santa.bot import texts
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.handlers.errors import notify_game_error
+from secret_santa.bot.handlers.utils import parse_game_id
 from secret_santa.bot.keyboards import cancel_keyboard, main_menu_keyboard, open_game_keyboard
 from secret_santa.bot.services.errors import GameError
 from secret_santa.bot.services.games import (
@@ -28,15 +29,9 @@ router.callback_query.filter(F.message.chat.type == ChatType.PRIVATE)
 logger = logging.getLogger(__name__)
 
 
-def _game_id(data: str | None) -> int:
-    if data is None:
-        raise RuntimeError("Callback data is unavailable")
-    return int(data.rsplit(":", maxsplit=1)[1])
-
-
 @router.callback_query(F.data.regexp(r"^participant:wishes:\d+$"))
 async def show_wishes(callback: CallbackQuery, db: Database, lang: str) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
     try:
@@ -58,7 +53,7 @@ async def begin_wishes_edit(
     db: Database,
     lang: str,
 ) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     if not isinstance(callback.message, Message):
         raise RuntimeError("Callback message is unavailable")
     try:
@@ -115,7 +110,7 @@ async def show_target(
     bot: Bot,
     lang: str,
 ) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     try:
         result = await get_participant_target(db, game_id, callback.from_user.id)
     except GameError as error:
@@ -140,11 +135,15 @@ async def show_target(
 
 @router.callback_query(F.data.regexp(r"^participant:ready:\d+$"))
 async def mark_ready(callback: CallbackQuery, db: Database, lang: str) -> None:
-    game_id = _game_id(callback.data)
+    game_id = parse_game_id(callback.data)
     try:
         result = await mark_gift_ready(db, game_id, callback.from_user.id)
     except GameError as error:
         await notify_game_error(callback, error, lang)
         return
-    text = texts.t(lang, "gift_ready_success") if result.changed else texts.t(lang, "gift_already_ready")
+    text = (
+        texts.t(lang, "gift_ready_success")
+        if result.changed
+        else texts.t(lang, "gift_already_ready")
+    )
     await callback.answer(text, show_alert=True)
