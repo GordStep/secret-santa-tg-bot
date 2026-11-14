@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -117,6 +118,18 @@ async def process_description_edit(
     )
 
 
+async def _send_target_message(bot: Bot, recipient_user_id: int, text: str) -> bool:
+    while True:
+        try:
+            await bot.send_message(recipient_user_id, text)
+        except TelegramRetryAfter as error:
+            await asyncio.sleep(error.retry_after)
+        except TelegramAPIError:
+            return False
+        else:
+            return True
+
+
 @router.callback_query(F.data.regexp(r"^organizer:start:\d+$"))
 async def start_draw(
     callback: CallbackQuery,
@@ -137,17 +150,17 @@ async def start_draw(
     failed_deliveries = 0
     for notification in result.notifications:
         recipient_language = await stored_language(db, notification.recipient_user_id)
-        try:
-            await bot.send_message(
-                notification.recipient_user_id,
-                texts.target_assignment(
-                    recipient_language,
-                    result.game.name,
-                    notification.target,
-                    False,
-                ),
-            )
-        except TelegramAPIError:
+        delivered = await _send_target_message(
+            bot,
+            notification.recipient_user_id,
+            texts.target_assignment(
+                recipient_language,
+                result.game.name,
+                notification.target,
+                False,
+            ),
+        )
+        if not delivered:
             failed_deliveries += 1
             logger.warning(
                 "Could not deliver a target to recipient %s in game %s",

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from aiogram import Bot, Dispatcher
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.methods import AnswerCallbackQuery, SendMessage
 from aiogram.types import CallbackQuery, Chat, Message, Update, User
@@ -16,7 +17,7 @@ from secret_santa.bot.handlers.common import router as common_router
 from secret_santa.bot.handlers.create_game import router as create_game_router
 from secret_santa.bot.handlers.errors import handle_unexpected_error
 from secret_santa.bot.handlers.join_game import router as join_game_router
-from secret_santa.bot.handlers.organizer import router as organizer_router
+from secret_santa.bot.handlers.organizer import _send_target_message, router as organizer_router
 from secret_santa.bot.handlers.participant import router as participant_router
 from secret_santa.bot.handlers.settings import router as settings_router
 from secret_santa.bot.middlewares import LanguageMiddleware
@@ -679,4 +680,27 @@ async def test_group_updates_cannot_access_or_manage_games(
     assert _callback_answers(bot) == []
     details = await get_game_details(db, game.id, organizer.id)
     assert details.game.status == GameStatus.COLLECTING
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_target_delivery_retries_after_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bot = _bot()
+    method = SendMessage(chat_id=101, text="target")
+    rate_limit = TelegramRetryAfter(
+        method=method,
+        message="Too Many Requests",
+        retry_after=2,
+    )
+    bot.send_message = AsyncMock(side_effect=[rate_limit, None])
+    sleep = AsyncMock()
+    monkeypatch.setattr("secret_santa.bot.handlers.organizer.asyncio.sleep", sleep)
+
+    delivered = await _send_target_message(bot, 101, "target")
+
+    assert delivered is True
+    assert bot.send_message.await_count == 2
+    sleep.assert_awaited_once_with(2)
     await bot.session.close()
