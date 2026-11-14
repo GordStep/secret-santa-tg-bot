@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -137,15 +138,22 @@ async def create_game(
     created_at = datetime.now(timezone.utc).isoformat()
     await db.execute("BEGIN IMMEDIATE")
     try:
-        code = await generate_unique_code(db)
-        game = await repo.insert_game(
-            db,
-            code,
-            normalized_name,
-            normalized_description,
-            organizer_id,
-            created_at,
-        )
+        while True:
+            code = await generate_unique_code(db)
+            try:
+                game = await repo.insert_game(
+                    db,
+                    code,
+                    normalized_name,
+                    normalized_description,
+                    organizer_id,
+                    created_at,
+                )
+            except sqlite3.IntegrityError as error:
+                if "UNIQUE constraint failed: games.code" not in str(error):
+                    raise
+            else:
+                break
         await db.commit()
     except Exception:
         await db.rollback()
