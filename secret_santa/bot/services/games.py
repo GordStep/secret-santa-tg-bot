@@ -21,6 +21,7 @@ from secret_santa.bot.services.errors import (
     GameNotFoundError,
     GameNotStartedError,
     InvalidCodeError,
+    InvalidGameDescriptionError,
     InvalidGameNameError,
     InvalidWishesError,
     NotEnoughParticipantsError,
@@ -29,6 +30,7 @@ from secret_santa.bot.services.errors import (
 )
 
 MAX_GAME_NAME_LENGTH = 100
+MAX_GAME_DESCRIPTION_LENGTH = 1000
 MAX_WISHES_LENGTH = 2000
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -85,6 +87,15 @@ def _normalize_game_name(name: str) -> str:
     return normalized
 
 
+def _normalize_game_description(description: str | None) -> str | None:
+    if description is None:
+        return None
+    normalized = description.strip()
+    if len(normalized) > MAX_GAME_DESCRIPTION_LENGTH:
+        raise InvalidGameDescriptionError
+    return normalized or None
+
+
 def _normalize_wishes(wishes: str | None) -> str | None:
     if wishes is None:
         return None
@@ -119,13 +130,22 @@ async def create_game(
     db: Database,
     organizer_id: int,
     name: str,
+    description: str | None = None,
 ) -> Game:
     normalized_name = _normalize_game_name(name)
+    normalized_description = _normalize_game_description(description)
     created_at = datetime.now(timezone.utc).isoformat()
     await db.execute("BEGIN IMMEDIATE")
     try:
         code = await generate_unique_code(db)
-        game = await repo.insert_game(db, code, normalized_name, organizer_id, created_at)
+        game = await repo.insert_game(
+            db,
+            code,
+            normalized_name,
+            normalized_description,
+            organizer_id,
+            created_at,
+        )
         await db.commit()
     except Exception:
         await db.rollback()

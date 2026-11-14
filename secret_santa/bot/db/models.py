@@ -18,6 +18,7 @@ class Game:
     id: int
     code: str
     name: str
+    description: str | None
     organizer_id: int
     status: GameStatus
     created_at: str
@@ -48,6 +49,7 @@ CREATE TABLE IF NOT EXISTS games (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
+    description TEXT,
     organizer_id INTEGER NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('collecting', 'started', 'archived')),
     created_at DATETIME NOT NULL
@@ -80,4 +82,14 @@ async def init_db(db: aiosqlite.Connection) -> None:
     db.row_factory = sqlite3.Row
     await db.execute("PRAGMA foreign_keys = ON")
     await db.executescript(SCHEMA)
+    await _migrate(db)
     await db.commit()
+
+
+async def _migrate(db: aiosqlite.Connection) -> None:
+    """Apply lightweight schema migrations for databases created before a field existed."""
+    cursor = await db.execute("PRAGMA table_info(games)")
+    columns = {row["name"] for row in await cursor.fetchall()}
+    await cursor.close()
+    if "description" not in columns:
+        await db.execute("ALTER TABLE games ADD COLUMN description TEXT")

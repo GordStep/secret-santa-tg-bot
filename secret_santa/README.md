@@ -9,6 +9,7 @@ including their own games.
 ## Features
 
 - Game creation with unique eight-character invitation codes and Telegram invite links.
+- Optional game description, shown when joining and when opening a game from "My games".
 - Joining through `/start <code>` deep links with the usual gift-wishes step.
 - Optional gift wishes and one participation per user per game.
 - Atomic draw using a derangement, so nobody gifts to themselves.

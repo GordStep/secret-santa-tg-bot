@@ -9,7 +9,9 @@ from secret_santa.bot.i18n import translate as t
 __all__ = [
     "display_name",
     "game_created",
+    "game_description",
     "game_list_button",
+    "join_game_info",
     "joined_game",
     "organizer_list",
     "organizer_participant_joined",
@@ -32,6 +34,12 @@ def status_text(language: str, status: GameStatus) -> str:
 
 def display_name(username: str | None, first_name: str) -> str:
     return f"@{username}" if username else first_name
+
+
+def game_description(language: str, description: str | None) -> str:
+    if description is None:
+        return t(language, "description_not_provided")
+    return html.escape(description)
 
 
 def game_list_button(language: str, game: Game, user_id: int) -> str:
@@ -59,6 +67,15 @@ def joined_game(language: str, game_name: str) -> str:
     return t(language, "joined_game", name=html.escape(game_name))
 
 
+def join_game_info(language: str, game: Game) -> str:
+    return t(
+        language,
+        "join_game_info",
+        name=html.escape(game.name),
+        description=game_description(language, game.description),
+    )
+
+
 def organizer_participant_joined(
     language: str,
     game_name: str,
@@ -83,6 +100,7 @@ def organizer_list(
             language,
             "organizer_list_header",
             name=html.escape(game.name),
+            description=game_description(language, game.description),
             code=html.escape(game.code),
         ),
     ]
@@ -116,6 +134,7 @@ def participant_game(language: str, game: Game, participant: Participant) -> str
         language,
         "participant_game",
         name=html.escape(game.name),
+        description=game_description(language, game.description),
         status=status_text(language, game.status),
         gift_status=gift_status,
     )
