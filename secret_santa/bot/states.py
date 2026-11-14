@@ -15,3 +15,7 @@ class JoinGameState(StatesGroup):
 
 class EditGameDescriptionState(StatesGroup):
     waiting_for_description = State()
+
+
+class EditWishesState(StatesGroup):
+    waiting_for_wishes = State()

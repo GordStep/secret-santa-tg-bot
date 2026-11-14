@@ -98,6 +98,11 @@ def game_keyboard(
                 callback_data=f"organizer:delete:{game.id}",
             )
     if participant is not None:
+        if game.status != GameStatus.ARCHIVED:
+            builder.button(
+                text=texts.t(language, "edit_wishes_button"),
+                callback_data=f"participant:edit_wishes:{game.id}",
+            )
         builder.button(
             text=texts.t(language, "my_target_button"),
             callback_data=f"participant:target:{game.id}",

@@ -18,8 +18,10 @@ from secret_santa.bot.services.errors import (
     GameNotStartedError,
     InvalidCodeError,
     InvalidGameDescriptionError,
+    InvalidWishesError,
     NotEnoughParticipantsError,
     NotOrganizerError,
+    NotParticipantError,
 )
 from secret_santa.bot.services.games import (
     archive_game,
@@ -32,6 +34,7 @@ from secret_santa.bot.services.games import (
     mark_gift_ready,
     start_game,
     update_game_description,
+    update_participant_wishes,
     validate_join,
 )
 
@@ -251,3 +254,28 @@ async def test_language_write_and_game_creation_are_serialized(
     assert game_was_blocked
     assert game.name == "Concurrent game"
     assert await repo.get_user_language(db, 900) == "en"
+
+
+@pytest.mark.asyncio
+async def test_participant_can_edit_wishes_until_game_is_archived(db: Database) -> None:
+    game = await create_game(db, 900, "Editable wishes")
+    await _join(db, game.id, 101, "Initial wishes")
+    await _join(db, game.id, 102)
+
+    updated = await update_participant_wishes(db, game.id, 101, "  Updated wishes  ")
+    assert updated.wishes == "Updated wishes"
+
+    with pytest.raises(NotParticipantError):
+        await update_participant_wishes(db, game.id, 103, "Not allowed")
+    with pytest.raises(InvalidWishesError):
+        await update_participant_wishes(db, game.id, 101, "x" * 2001)
+
+    await start_game(db, game.id, 900)
+    await update_participant_wishes(db, game.id, 101, "Updated after draw")
+    target = await get_participant_target(db, game.id, 102)
+    assert target.target.user_id == 101
+    assert target.target.wishes == "Updated after draw"
+
+    await archive_game(db, game.id, 900)
+    with pytest.raises(GameArchivedError):
+        await update_participant_wishes(db, game.id, 101, "Archived")

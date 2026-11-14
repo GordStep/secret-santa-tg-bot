@@ -336,6 +336,48 @@ async def delete_archived_game(db: Database, game_id: int, organizer_id: int) ->
         raise
 
 
+async def _get_participant_for_wishes_edit(
+    db: Database,
+    game_id: int,
+    user_id: int,
+) -> Participant:
+    game = await _get_game(db, game_id)
+    participant = await repo.get_participant(db, game_id, user_id)
+    if participant is None:
+        raise NotParticipantError
+    if game.status == GameStatus.ARCHIVED:
+        raise GameArchivedError
+    return participant
+
+
+@_synchronized
+async def get_participant_for_wishes_edit(
+    db: Database,
+    game_id: int,
+    user_id: int,
+) -> Participant:
+    return await _get_participant_for_wishes_edit(db, game_id, user_id)
+
+
+@_synchronized
+async def update_participant_wishes(
+    db: Database,
+    game_id: int,
+    user_id: int,
+    wishes: str | None,
+) -> Participant:
+    normalized_wishes = _normalize_wishes(wishes)
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        participant = await _get_participant_for_wishes_edit(db, game_id, user_id)
+        await repo.set_participant_wishes(db, game_id, user_id, normalized_wishes)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+    return replace(participant, wishes=normalized_wishes)
+
+
 @_synchronized
 async def get_participant_target(
     db: Database,

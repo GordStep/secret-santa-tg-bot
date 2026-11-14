@@ -704,3 +704,50 @@ async def test_target_delivery_retries_after_rate_limit(
     assert bot.send_message.await_count == 2
     sleep.assert_awaited_once_with(2)
     await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_participant_can_edit_wishes_through_dialog(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(900)
+    participant = _user(101)
+    other_user = _user(102)
+    game = await create_game(db, organizer.id, "Editable wishes")
+    await join_game(db, game.id, participant.id, participant.username, participant.first_name, None)
+
+    await _feed(
+        dispatcher,
+        bot,
+        db,
+        _callback(other_user, 1, f"participant:edit_wishes:{game.id}"),
+    )
+    assert any(
+        answer.text == texts.t("ru", "not_participant") for answer in _callback_answers(bot)
+    )
+
+    await _feed(
+        dispatcher,
+        bot,
+        db,
+        _callback(participant, 2, f"participant:edit_wishes:{game.id}"),
+    )
+    assert _send_messages(bot)[-1].text == texts.t("ru", "ask_edit_wishes")
+    await _feed(dispatcher, bot, db, _update(participant, 3, "  <i>Updated wishes</i>  "))
+
+    details = await get_game_details(db, game.id, participant.id)
+    assert details.participant is not None
+    assert details.participant.wishes == "<i>Updated wishes</i>"
+    assert _send_messages(bot)[-1].text == texts.t("ru", "wishes_updated")
+
+    await _feed(dispatcher, bot, db, _callback(participant, 4, f"game:{game.id}"))
+    game_markup = _send_messages(bot)[-1].reply_markup
+    assert game_markup is not None
+    assert any(
+        button.callback_data == f"participant:edit_wishes:{game.id}"
+        for row in game_markup.inline_keyboard
+        for button in row
+    )
+    await bot.session.close()
