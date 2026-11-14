@@ -34,6 +34,17 @@ def wishes_keyboard(language: str) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def description_keyboard(language: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=texts.t(language, "skip_description_button"),
+        callback_data="create:skip_description",
+    )
+    builder.button(text=texts.t(language, "cancel_button"), callback_data="cancel_dialog")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def games_keyboard(
     games: Sequence[Game],
     user_id: int,

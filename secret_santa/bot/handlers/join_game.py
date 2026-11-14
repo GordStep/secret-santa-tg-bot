@@ -59,6 +59,7 @@ async def process_join_code(
         organizer_id=game.organizer_id,
     )
     await state.set_state(JoinGameState.waiting_for_wishes)
+    await message.answer(texts.join_game_info(lang, game))
     await message.answer(texts.t(lang, "ask_wishes"), reply_markup=wishes_keyboard(lang))
 
 

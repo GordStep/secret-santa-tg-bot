@@ -89,6 +89,7 @@ async def _join_by_invite(
         organizer_id=game.organizer_id,
     )
     await state.set_state(JoinGameState.waiting_for_wishes)
+    await message.answer(texts.join_game_info(language, game))
     await message.answer(texts.t(language, "ask_wishes"), reply_markup=wishes_keyboard(language))
 
 

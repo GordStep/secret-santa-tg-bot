@@ -9,6 +9,10 @@ class InvalidGameNameError(GameError):
     pass
 
 
+class InvalidGameDescriptionError(GameError):
+    pass
+
+
 class InvalidWishesError(GameError):
     pass
 

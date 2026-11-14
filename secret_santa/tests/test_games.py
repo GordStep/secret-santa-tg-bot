@@ -15,6 +15,7 @@ from secret_santa.bot.services.errors import (
     GameNotFoundError,
     GameNotStartedError,
     InvalidCodeError,
+    InvalidGameDescriptionError,
     NotEnoughParticipantsError,
     NotOrganizerError,
 )
@@ -172,3 +173,15 @@ async def test_organizer_can_delete_only_archived_game(db: Database) -> None:
     assert await list_user_games(db, 101) == ()
     with pytest.raises(GameNotFoundError):
         await get_game_details(db, game.id, 900)
+
+
+@pytest.mark.asyncio
+async def test_game_description_is_normalized_and_optional(db: Database) -> None:
+    game = await create_game(db, 900, "With description", "  Описание игры  ")
+    assert game.description == "Описание игры"
+
+    skipped = await create_game(db, 900, "Without description")
+    assert skipped.description is None
+
+    with pytest.raises(InvalidGameDescriptionError):
+        await create_game(db, 900, "Too long", "x" * 1001)

@@ -20,6 +20,7 @@ from secret_santa.bot.services.errors import (
     GameNotFoundError,
     GameNotStartedError,
     InvalidCodeError,
+    InvalidGameDescriptionError,
     InvalidGameNameError,
     InvalidWishesError,
     NotEnoughParticipantsError,
@@ -53,6 +54,8 @@ def game_error_text(language: str, error: GameError) -> str:
         return texts.t(language, "game_not_started")
     if isinstance(error, InvalidGameNameError):
         return texts.t(language, "invalid_game_name")
+    if isinstance(error, InvalidGameDescriptionError):
+        return texts.t(language, "invalid_game_description")
     if isinstance(error, InvalidWishesError):
         return texts.t(language, "invalid_wishes")
     if isinstance(error, GameAccessDeniedError):

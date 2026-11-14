@@ -12,6 +12,7 @@ def _to_game(row: sqlite3.Row) -> Game:
         id=row["id"],
         code=row["code"],
         name=row["name"],
+        description=row["description"],
         organizer_id=row["organizer_id"],
         status=GameStatus(row["status"]),
         created_at=row["created_at"],
@@ -65,22 +66,31 @@ async def insert_game(
     db: Database,
     code: str,
     name: str,
+    description: str | None,
     organizer_id: int,
     created_at: str,
 ) -> Game:
     query = """
-        INSERT INTO games (code, name, organizer_id, status, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO games (code, name, description, organizer_id, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
     """
     cursor = await db.execute(
         query,
-        (code, name, organizer_id, GameStatus.COLLECTING, created_at),
+        (code, name, description, organizer_id, GameStatus.COLLECTING, created_at),
     )
     game_id = cursor.lastrowid
     await cursor.close()
     if game_id is None:
         raise RuntimeError("SQLite did not return a game ID")
-    return Game(game_id, code, name, organizer_id, GameStatus.COLLECTING, created_at)
+    return Game(
+        game_id,
+        code,
+        name,
+        description,
+        organizer_id,
+        GameStatus.COLLECTING,
+        created_at,
+    )
 
 
 async def get_participant(

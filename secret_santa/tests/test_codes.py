@@ -31,7 +31,7 @@ async def test_database_code_generation_retries_on_collision(
     db: Database,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    await repo.insert_game(db, "AAAAAAAA", "First game", 1, "2026-01-01T00:00:00+00:00")
+    await repo.insert_game(db, "AAAAAAAA", "First game", None, 1, "2026-01-01T00:00:00+00:00")
     await db.commit()
     generated = iter(["AAAAAAAA", "BBBBBBBB"])
     monkeypatch.setattr(codes, "generate_code", lambda: next(generated))

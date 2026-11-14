@@ -133,19 +133,21 @@ async def test_handler_game_flow_without_network(
 
     await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
     await _feed(dispatcher, bot, db, _update(organizer, 2, "Party <b>"))
+    await _feed(dispatcher, bot, db, _update(organizer, 3, "Gift exchange for the lab"))
     games = await list_user_games(db, 900)
     assert len(games) == 1
     game = games[0]
+    assert game.description == "Gift exchange for the lab"
     assert any("Party &lt;b&gt;" in method.text for method in _send_messages(bot))
     invite_link = f"https://t.me/secret_santa_test_bot?start={game.code}"
     assert any(invite_link in method.text for method in _send_messages(bot))
 
-    await _feed(dispatcher, bot, db, _callback(first, 3, "join_game"))
-    await _feed(dispatcher, bot, db, _update(first, 4, game.code.lower()))
-    await _feed(dispatcher, bot, db, _update(first, 5, "<i>Books</i>"))
-    await _feed(dispatcher, bot, db, _callback(second, 6, "join_game"))
-    await _feed(dispatcher, bot, db, _update(second, 7, game.code))
-    await _feed(dispatcher, bot, db, _callback(second, 8, "join:skip_wishes"))
+    await _feed(dispatcher, bot, db, _callback(first, 4, "join_game"))
+    await _feed(dispatcher, bot, db, _update(first, 5, game.code.lower()))
+    await _feed(dispatcher, bot, db, _update(first, 6, "<i>Books</i>"))
+    await _feed(dispatcher, bot, db, _callback(second, 7, "join_game"))
+    await _feed(dispatcher, bot, db, _update(second, 8, game.code))
+    await _feed(dispatcher, bot, db, _callback(second, 9, "join:skip_wishes"))
     organizer_messages = [
         method for method in _send_messages(bot) if method.chat_id == organizer.id
     ]
@@ -162,7 +164,7 @@ async def test_handler_game_flow_without_network(
         dispatcher,
         bot,
         db,
-        _callback(organizer, 9, f"organizer:start:{game.id}"),
+        _callback(organizer, 10, f"organizer:start:{game.id}"),
     )
     details = await get_game_details(db, game.id, 900)
     assert details.game.status == GameStatus.STARTED
@@ -175,7 +177,7 @@ async def test_handler_game_flow_without_network(
         dispatcher,
         bot,
         db,
-        _callback(first, 10, f"participant:ready:{game.id}"),
+        _callback(first, 11, f"participant:ready:{game.id}"),
     )
     details = await get_game_details(db, game.id, 900)
     readiness = {item.user_id: item.gift_ready for item in details.participants}
@@ -185,13 +187,13 @@ async def test_handler_game_flow_without_network(
         dispatcher,
         bot,
         db,
-        _callback(organizer, 11, f"organizer:archive:{game.id}"),
+        _callback(organizer, 12, f"organizer:archive:{game.id}"),
     )
     await _feed(
         dispatcher,
         bot,
         db,
-        _callback(organizer, 12, f"organizer:archive_confirm:{game.id}"),
+        _callback(organizer, 13, f"organizer:archive_confirm:{game.id}"),
     )
     details = await get_game_details(db, game.id, 900)
     assert details.game.status == GameStatus.ARCHIVED
@@ -200,7 +202,7 @@ async def test_handler_game_flow_without_network(
         dispatcher,
         bot,
         db,
-        _callback(second, 13, f"participant:ready:{game.id}"),
+        _callback(second, 14, f"participant:ready:{game.id}"),
     )
     assert any(
         method.text == texts.t("ru", "game_archived") for method in _callback_answers(bot)
@@ -218,16 +220,17 @@ async def test_archived_game_deletion_flow(
 
     await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
     await _feed(dispatcher, bot, db, _update(organizer, 2, "Finished"))
+    await _feed(dispatcher, bot, db, _callback(organizer, 3, "create:skip_description"))
     game = (await list_user_games(db, organizer.id))[0]
-    await _feed(dispatcher, bot, db, _callback(organizer, 3, f"organizer:archive:{game.id}"))
+    await _feed(dispatcher, bot, db, _callback(organizer, 4, f"organizer:archive:{game.id}"))
     await _feed(
         dispatcher,
         bot,
         db,
-        _callback(organizer, 4, f"organizer:archive_confirm:{game.id}"),
+        _callback(organizer, 5, f"organizer:archive_confirm:{game.id}"),
     )
 
-    await _feed(dispatcher, bot, db, _callback(organizer, 5, f"game:{game.id}"))
+    await _feed(dispatcher, bot, db, _callback(organizer, 6, f"game:{game.id}"))
     game_markup = _send_messages(bot)[-1].reply_markup
     assert game_markup is not None
     assert any(
@@ -237,13 +240,13 @@ async def test_archived_game_deletion_flow(
         for button in row
     )
 
-    await _feed(dispatcher, bot, db, _callback(organizer, 6, f"organizer:delete:{game.id}"))
+    await _feed(dispatcher, bot, db, _callback(organizer, 7, f"organizer:delete:{game.id}"))
     assert _send_messages(bot)[-1].text == texts.t("ru", "delete_confirmation")
     await _feed(
         dispatcher,
         bot,
         db,
-        _callback(organizer, 7, f"organizer:delete_confirm:{game.id}"),
+        _callback(organizer, 8, f"organizer:delete_confirm:{game.id}"),
     )
 
     assert await list_user_games(db, organizer.id) == ()
@@ -262,14 +265,15 @@ async def test_invite_link_asks_for_wishes_and_joins_user(
 
     await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
     await _feed(dispatcher, bot, db, _update(organizer, 2, "Deep link"))
+    await _feed(dispatcher, bot, db, _callback(organizer, 3, "create:skip_description"))
     game = (await list_user_games(db, organizer.id))[0]
 
-    await _feed(dispatcher, bot, db, _update(participant, 3, f"/start {game.code}"))
+    await _feed(dispatcher, bot, db, _update(participant, 4, f"/start {game.code}"))
 
     assert _send_messages(bot)[-1].text == texts.t("ru", "ask_wishes")
     assert await list_user_games(db, participant.id) == ()
 
-    await _feed(dispatcher, bot, db, _update(participant, 4, "Books"))
+    await _feed(dispatcher, bot, db, _update(participant, 5, "Books"))
     details = await get_game_details(db, game.id, participant.id)
     assert details.participant is not None
     assert details.participant.wishes == "Books"
@@ -432,17 +436,18 @@ async def test_target_notifications_use_recipient_language(
 
     await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
     await _feed(dispatcher, bot, db, _update(organizer, 2, "Mixed"))
+    await _feed(dispatcher, bot, db, _callback(organizer, 3, "create:skip_description"))
     game = (await list_user_games(db, organizer.id))[0]
 
-    await _feed(dispatcher, bot, db, _callback(first, 3, "join_game"))
-    await _feed(dispatcher, bot, db, _update(first, 4, game.code))
-    await _feed(dispatcher, bot, db, _callback(first, 5, "join:skip_wishes"))
+    await _feed(dispatcher, bot, db, _callback(first, 4, "join_game"))
+    await _feed(dispatcher, bot, db, _update(first, 5, game.code))
+    await _feed(dispatcher, bot, db, _callback(first, 6, "join:skip_wishes"))
 
-    await _feed(dispatcher, bot, db, _callback(second, 6, "join_game"))
-    await _feed(dispatcher, bot, db, _update(second, 7, game.code))
-    await _feed(dispatcher, bot, db, _callback(second, 8, "join:skip_wishes"))
+    await _feed(dispatcher, bot, db, _callback(second, 7, "join_game"))
+    await _feed(dispatcher, bot, db, _update(second, 8, game.code))
+    await _feed(dispatcher, bot, db, _callback(second, 9, "join:skip_wishes"))
 
-    await _feed(dispatcher, bot, db, _callback(organizer, 9, f"organizer:start:{game.id}"))
+    await _feed(dispatcher, bot, db, _callback(organizer, 10, f"organizer:start:{game.id}"))
 
     first_messages = [method for method in _send_messages(bot) if method.chat_id == first.id]
     second_messages = [method for method in _send_messages(bot) if method.chat_id == second.id]
@@ -452,4 +457,70 @@ async def test_target_notifications_use_recipient_language(
     assert any(
         method.text.startswith("Game: <b>Mixed</b>") for method in second_messages
     )
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_game_description_is_shown_when_joining_and_selecting(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(900)
+    participant = _user(101)
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
+    await _feed(dispatcher, bot, db, _update(organizer, 2, "Secret Santa"))
+    assert _send_messages(bot)[-1].text == texts.t("ru", "ask_game_description")
+
+    await _feed(dispatcher, bot, db, _update(organizer, 3, "Дарим подарки коллегам"))
+    game = (await list_user_games(db, organizer.id))[0]
+    assert game.description == "Дарим подарки коллегам"
+
+    # Selecting the game from "My games" shows the description in the organizer view.
+    await _feed(dispatcher, bot, db, _callback(organizer, 4, f"game:{game.id}"))
+    assert any(
+        "Описание: Дарим подарки коллегам" in method.text
+        for method in _send_messages(bot)
+    )
+
+    # Joining shows the description before asking for wishes.
+    await _feed(dispatcher, bot, db, _callback(participant, 5, "join_game"))
+    await _feed(dispatcher, bot, db, _update(participant, 6, game.code))
+    participant_join_messages = [
+        method for method in _send_messages(bot) if method.chat_id == participant.id
+    ]
+    assert any(
+        method.text == texts.join_game_info("ru", game)
+        for method in participant_join_messages
+    )
+
+    # The participant view also shows the description after opening the game.
+    await _feed(dispatcher, bot, db, _callback(participant, 7, "join:skip_wishes"))
+    await _feed(dispatcher, bot, db, _callback(participant, 8, f"game:{game.id}"))
+    participant_messages = [
+        method for method in _send_messages(bot) if method.chat_id == participant.id
+    ]
+    assert any(
+        "Описание: Дарим подарки коллегам" in method.text
+        for method in participant_messages
+    )
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_skipping_description_creates_game_without_it(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(900)
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
+    await _feed(dispatcher, bot, db, _update(organizer, 2, "No description"))
+    await _feed(dispatcher, bot, db, _callback(organizer, 3, "create:skip_description"))
+
+    game = (await list_user_games(db, organizer.id))[0]
+    assert game.description is None
+    assert texts.game_description("ru", None) == texts.t("ru", "description_not_provided")
     await bot.session.close()
