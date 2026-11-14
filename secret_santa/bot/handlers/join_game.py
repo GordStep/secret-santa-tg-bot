@@ -8,6 +8,7 @@ from secret_santa.bot import texts
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.filters import ButtonText
 from secret_santa.bot.handlers.errors import notify_game_error
+from secret_santa.bot.handlers.game_info import answer_game_message
 from secret_santa.bot.keyboards import cancel_keyboard, open_game_keyboard, wishes_keyboard
 from secret_santa.bot.lang import stored_language
 from secret_santa.bot.notifications import notify_organizer_participant_joined
@@ -59,7 +60,13 @@ async def process_join_code(
         organizer_id=game.organizer_id,
     )
     await state.set_state(JoinGameState.waiting_for_wishes)
-    await message.answer(texts.join_game_info(lang, game))
+    await answer_game_message(
+        message,
+        lang,
+        game,
+        texts.join_game_info(lang, game),
+        texts.join_game_info(lang, game, include_description=False),
+    )
     await message.answer(texts.t(lang, "ask_wishes"), reply_markup=wishes_keyboard(lang))
 
 

@@ -20,7 +20,7 @@ from secret_santa.bot.handlers.organizer import router as organizer_router
 from secret_santa.bot.handlers.participant import router as participant_router
 from secret_santa.bot.handlers.settings import router as settings_router
 from secret_santa.bot.middlewares import LanguageMiddleware
-from secret_santa.bot.services.games import get_game_details, list_user_games
+from secret_santa.bot.services.games import get_game_details, join_game, list_user_games
 
 
 @pytest.fixture(scope="module")
@@ -523,4 +523,67 @@ async def test_skipping_description_creates_game_without_it(
     game = (await list_user_games(db, organizer.id))[0]
     assert game.description is None
     assert texts.game_description("ru", None) == texts.t("ru", "description_not_provided")
+    await bot.session.close()
+
+
+@pytest.mark.asyncio
+async def test_long_description_is_sent_within_telegram_message_limit(
+    db: Database,
+    dispatcher: Dispatcher,
+) -> None:
+    bot = _bot()
+    organizer = _user(900)
+    participant = _user(101)
+    description = "<b>" * 1000
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 1, "create_game"))
+    await _feed(dispatcher, bot, db, _update(organizer, 2, "Long description"))
+    await _feed(dispatcher, bot, db, _update(organizer, 3, description))
+    game = (await list_user_games(db, organizer.id))[0]
+    assert len(description) == 3000
+    assert len(texts.organizer_list("ru", game, ())) > 4096
+    for user_id in range(1000, 1070):
+        await join_game(db, game.id, user_id, f"user{user_id}", f"User {user_id}", None)
+    organizer_details = await get_game_details(db, game.id, organizer.id)
+    brief_organizer_text = texts.organizer_list(
+        "ru",
+        game,
+        organizer_details.participants,
+        include_description=False,
+    )
+    assert len(brief_organizer_text) > 4096
+
+    await _feed(dispatcher, bot, db, _callback(organizer, 4, f"game:{game.id}"))
+    await _feed(dispatcher, bot, db, _callback(participant, 5, "join_game"))
+    await _feed(dispatcher, bot, db, _update(participant, 6, game.code))
+    await _feed(dispatcher, bot, db, _callback(participant, 7, "join:skip_wishes"))
+    await _feed(dispatcher, bot, db, _callback(participant, 8, f"game:{game.id}"))
+
+    messages = _send_messages(bot)
+    description_text = texts.description_message("ru", description)
+    description_messages = [method for method in messages if method.text == description_text]
+    assert len(description_messages) == 3
+    assert all(method.parse_mode is None for method in description_messages)
+    assert all(len(method.text) <= 4096 for method in messages)
+    organizer_messages = [method for method in messages if method.chat_id == organizer.id]
+    assert all(
+        any(f"tg://user?id={user_id}" in method.text for method in organizer_messages)
+        for user_id in range(1000, 1070)
+    )
+    assert any(
+        method.text == texts.join_game_info("ru", game, include_description=False)
+        for method in messages
+    )
+    details = await get_game_details(db, game.id, participant.id)
+    assert details.participant is not None
+    assert any(
+        method.text
+        == texts.participant_game(
+            "ru",
+            game,
+            details.participant,
+            include_description=False,
+        )
+        for method in messages
+    )
     await bot.session.close()

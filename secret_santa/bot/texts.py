@@ -7,6 +7,7 @@ from secret_santa.bot.db.models import Game, GameStatus, Participant, Target
 from secret_santa.bot.i18n import translate as t
 
 __all__ = [
+    "description_message",
     "display_name",
     "game_created",
     "game_description",
@@ -42,6 +43,10 @@ def game_description(language: str, description: str | None) -> str:
     return html.escape(description)
 
 
+def description_message(language: str, description: str) -> str:
+    return t(language, "description_message", description=description)
+
+
 def game_list_button(language: str, game: Game, user_id: int) -> str:
     role_key = "role_organizer" if game.organizer_id == user_id else "role_participant"
     return t(
@@ -67,10 +72,15 @@ def joined_game(language: str, game_name: str) -> str:
     return t(language, "joined_game", name=html.escape(game_name))
 
 
-def join_game_info(language: str, game: Game) -> str:
+def join_game_info(
+    language: str,
+    game: Game,
+    include_description: bool = True,
+) -> str:
+    key = "join_game_info" if include_description else "join_game_info_brief"
     return t(
         language,
-        "join_game_info",
+        key,
         name=html.escape(game.name),
         description=game_description(language, game.description),
     )
@@ -94,11 +104,13 @@ def organizer_list(
     language: str,
     game: Game,
     participants: Sequence[Participant],
+    include_description: bool = True,
 ) -> str:
+    key = "organizer_list_header" if include_description else "organizer_list_header_brief"
     lines = [
         t(
             language,
-            "organizer_list_header",
+            key,
             name=html.escape(game.name),
             description=game_description(language, game.description),
             code=html.escape(game.code),
@@ -125,14 +137,20 @@ def organizer_list(
     return "\n".join(lines)
 
 
-def participant_game(language: str, game: Game, participant: Participant) -> str:
+def participant_game(
+    language: str,
+    game: Game,
+    participant: Participant,
+    include_description: bool = True,
+) -> str:
     gift_status = t(
         language,
         "gift_ready" if participant.gift_ready else "gift_not_ready",
     )
+    key = "participant_game" if include_description else "participant_game_brief"
     return t(
         language,
-        "participant_game",
+        key,
         name=html.escape(game.name),
         description=game_description(language, game.description),
         status=status_text(language, game.status),

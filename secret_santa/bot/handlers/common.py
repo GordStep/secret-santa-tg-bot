@@ -9,6 +9,7 @@ from secret_santa.bot import texts
 from secret_santa.bot.db.database import Database
 from secret_santa.bot.filters import ButtonText
 from secret_santa.bot.handlers.errors import notify_game_error
+from secret_santa.bot.handlers.game_info import answer_game_message
 from secret_santa.bot.keyboards import (
     game_keyboard,
     games_keyboard,
@@ -54,12 +55,28 @@ async def _send_game_details(
 ) -> None:
     if details.is_organizer:
         text = texts.organizer_list(language, details.game, details.participants)
+        brief_text = texts.organizer_list(
+            language,
+            details.game,
+            details.participants,
+            include_description=False,
+        )
     elif details.participant is not None:
         text = texts.participant_game(language, details.game, details.participant)
+        brief_text = texts.participant_game(
+            language,
+            details.game,
+            details.participant,
+            include_description=False,
+        )
     else:
         raise RuntimeError("Participant details are missing")
-    await message.answer(
+    await answer_game_message(
+        message,
+        language,
+        details.game,
         text,
+        brief_text,
         reply_markup=game_keyboard(
             details.game,
             details.is_organizer,
@@ -89,7 +106,13 @@ async def _join_by_invite(
         organizer_id=game.organizer_id,
     )
     await state.set_state(JoinGameState.waiting_for_wishes)
-    await message.answer(texts.join_game_info(language, game))
+    await answer_game_message(
+        message,
+        language,
+        game,
+        texts.join_game_info(language, game),
+        texts.join_game_info(language, game, include_description=False),
+    )
     await message.answer(texts.t(language, "ask_wishes"), reply_markup=wishes_keyboard(language))
 
 

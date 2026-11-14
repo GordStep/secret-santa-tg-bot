@@ -30,7 +30,7 @@ from secret_santa.bot.services.errors import (
 )
 
 MAX_GAME_NAME_LENGTH = 100
-MAX_GAME_DESCRIPTION_LENGTH = 1000
+MAX_GAME_DESCRIPTION_LENGTH = 3000
 MAX_WISHES_LENGTH = 2000
 P = ParamSpec("P")
 R = TypeVar("R")

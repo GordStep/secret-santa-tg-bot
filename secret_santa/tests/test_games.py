@@ -183,5 +183,8 @@ async def test_game_description_is_normalized_and_optional(db: Database) -> None
     skipped = await create_game(db, 900, "Without description")
     assert skipped.description is None
 
+    longest = await create_game(db, 900, "Long description", "x" * 3000)
+    assert longest.description == "x" * 3000
+
     with pytest.raises(InvalidGameDescriptionError):
-        await create_game(db, 900, "Too long", "x" * 1001)
+        await create_game(db, 900, "Too long", "x" * 3001)
