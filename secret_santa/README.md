@@ -30,7 +30,21 @@ source .venv/bin/activate
 python -m pip install -r secret_santa/requirements.txt
 ```
 
-Set the environment variables:
+Set the environment variables. The easiest way is to create a `.env` file in the
+repository root (see `secret_santa/.env.example` for the variable names):
+
+```bash
+cp secret_santa/.env.example .env
+```
+
+```dotenv
+BOT_TOKEN=your_token_from_BotFather
+DATABASE_PATH=secret_santa.db
+```
+
+The application loads this `.env` file automatically on startup via
+`python-dotenv`. Variables already present in the process environment take
+precedence over values from the file, so you can also set them directly:
 
 ```bash
 export BOT_TOKEN="your_token_from_BotFather"
@@ -38,9 +52,7 @@ export DATABASE_PATH="secret_santa.db"
 ```
 
 `BOT_TOKEN` is required. `DATABASE_PATH` is optional and defaults to
-`secret_santa.db` in the current working directory. The application reads the
-process environment directly; it does not automatically load `.env` files.
-See `secret_santa/.env.example` for the variable names.
+`secret_santa.db` in the current working directory.
 
 ## Launch
 
