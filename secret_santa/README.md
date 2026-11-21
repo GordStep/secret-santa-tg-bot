@@ -42,28 +42,127 @@ BOT_TOKEN=your_token_from_BotFather
 DATABASE_PATH=secret_santa.db
 ```
 
-The application loads this `.env` file automatically on startup via
-`python-dotenv`. Variables already present in the process environment take
-precedence over values from the file, so you can also set them directly:
+The application loads `<repository-root>/.env` automatically, regardless of the
+process working directory. Variables already present in the process environment
+take precedence over values from the file.
 
-```bash
-export BOT_TOKEN="your_token_from_BotFather"
-export DATABASE_PATH="secret_santa.db"
-```
-
-`BOT_TOKEN` is required. `DATABASE_PATH` is optional and defaults to
-`secret_santa.db` in the current working directory.
+`BOT_TOKEN` is required. `DATABASE_PATH` is optional and defaults to the absolute
+path `<repository-root>/secret_santa.db`. An absolute `DATABASE_PATH` is used as
+is; a relative path is resolved from the repository root, not from the current
+working directory. SQLite creates the database file on the first launch.
 
 ## Launch
 
+From the repository root:
+
 ```bash
 python -m secret_santa.bot.main
+```
+
+With absolute paths and an arbitrary current directory:
+
+```bash
+cd /opt/secret-santa-tg-bot
+/opt/secret-santa-tg-bot/.venv/bin/python -m secret_santa.bot.main
 ```
 
 Open a private chat with the bot and use `/start`. The reply keyboard supports game
 creation, joining, listing games, and viewing bot information. Inline keyboards provide
 game management, target viewing, and gift-readiness updates. `/my_games` lists all games
 organized or joined by the current user; `/cancel` cancels the current dialog.
+
+## Server deployment with systemd
+
+The instructions below assume that the repository is located at
+`/opt/secret-santa-tg-bot`. If it is elsewhere, replace every occurrence of this
+path with the actual absolute repository path.
+
+Important paths for this layout:
+
+| Purpose | Absolute path |
+| --- | --- |
+| Environment file | `/opt/secret-santa-tg-bot/.env` |
+| SQLite database | `/opt/secret-santa-tg-bot/secret_santa.db` |
+| Python interpreter | `/opt/secret-santa-tg-bot/.venv/bin/python` |
+| systemd unit | `/etc/systemd/system/secret-santa.service` |
+
+Install the virtual environment and dependencies without activating it:
+
+```bash
+cd /opt/secret-santa-tg-bot
+python3.11 -m venv /opt/secret-santa-tg-bot/.venv
+/opt/secret-santa-tg-bot/.venv/bin/python -m pip install \
+    -r /opt/secret-santa-tg-bot/secret_santa/requirements.txt
+```
+
+Create the service account and the environment file:
+
+```bash
+sudo useradd --system --shell /usr/sbin/nologin secretsanta
+cp /opt/secret-santa-tg-bot/secret_santa/.env.example \
+    /opt/secret-santa-tg-bot/.env
+```
+
+Put the real token and the absolute database path into
+`/opt/secret-santa-tg-bot/.env`:
+
+```dotenv
+BOT_TOKEN=your_token_from_BotFather
+DATABASE_PATH=/opt/secret-santa-tg-bot/secret_santa.db
+```
+
+Give the service account access to the code, environment file, database, and the
+database directory. Directory write access is required for SQLite journal files.
+Keep the token readable only by the service account:
+
+```bash
+sudo chown -R secretsanta:secretsanta /opt/secret-santa-tg-bot
+sudo chmod 600 /opt/secret-santa-tg-bot/.env
+```
+
+Create `/etc/systemd/system/secret-santa.service`:
+
+```bash
+sudo tee /etc/systemd/system/secret-santa.service > /dev/null <<'EOF'
+[Unit]
+Description=Secret Santa Telegram Bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=secretsanta
+Group=secretsanta
+WorkingDirectory=/opt/secret-santa-tg-bot
+EnvironmentFile=/opt/secret-santa-tg-bot/.env
+ExecStart=/opt/secret-santa-tg-bot/.venv/bin/python -m secret_santa.bot.main
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+Start the bot and enable automatic startup after a server reboot:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now secret-santa.service
+sudo systemctl status secret-santa.service --no-pager
+```
+
+View logs or restart the service after configuration changes:
+
+```bash
+sudo journalctl -u secret-santa.service -f
+sudo systemctl restart secret-santa.service
+```
+
+The service reads the same `/opt/secret-santa-tg-bot/.env` and uses the same
+`/opt/secret-santa-tg-bot/secret_santa.db` on every launch. To change the database
+location, set another absolute `DATABASE_PATH` in `.env`, make sure its parent
+directory is writable by `secretsanta`, and restart the service.
 
 ## Tests
 
